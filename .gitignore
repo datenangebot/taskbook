@@ -1,0 +1,50 @@
+# Dependencies installed locally
+/vendor/
+/vendor-bin/*/vendor/
+/node_modules/
+
+# Build/cache directories that are not runtime artifacts
+/build/
+/.cache/
+/.vite/
+
+# Test and coverage output
+/.php-cs-fixer.cache
+/.phpunit.result.cache
+/tests/.phpunit.cache/
+/coverage/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local environment files / secrets
+.env
+.env.local
+.env.*.local
+
+# IDE / editor state
+/.idea/
+/.vscode/
+/*.iml
+*.code-workspace
+
+# Operating-system files
+.DS_Store
+.AppleDouble
+._*
+Thumbs.db
+
+# Local release artifacts
+/*.tar.gz
+/*.tgz
+/release/
+/releaseNotes.md
+
+# IMPORTANT:
+# Production frontend bundles are intentionally tracked. Do not ignore /js/ or
+# /css/, because a fresh Nextcloud app checkout must contain its built assets.

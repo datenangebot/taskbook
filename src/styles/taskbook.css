@@ -1,0 +1,114 @@
+:root {
+	--taskbook-content-max-width: 780px;
+}
+
+.taskbook-lightweight-container {
+	box-sizing: border-box;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	background: transparent;
+	padding: calc(var(--default-grid-baseline, 4px) * 3);
+}
+
+.taskbook-page {
+	display: flex;
+	width: 100%;
+	max-width: var(--taskbook-content-max-width);
+	box-sizing: border-box;
+	flex-direction: column;
+	gap: calc(var(--default-grid-baseline, 4px) * 3);
+	margin: 0 auto;
+	padding: calc(var(--default-grid-baseline, 4px) * 4);
+}
+
+.taskbook-page.taskbook-page--wide {
+	max-width: none;
+	padding-inline: calc(var(--default-clickable-area) + calc(var(--default-grid-baseline, 4px) * 4));
+}
+
+.taskbook-page-header {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+}
+
+.taskbook-page-heading {
+	margin: 0;
+	font-size: 1.5rem;
+	line-height: 1.3;
+}
+
+.taskbook-period-navigation {
+	display: flex;
+	align-items: center;
+	margin-inline-start: auto;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline, 4px) / 2);
+}
+
+.taskbook-period-label {
+	margin: calc(var(--default-grid-baseline, 4px) * -1) 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.taskbook-entry-section {
+	width: 100%;
+}
+
+.taskbook-entry-section-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+}
+
+.taskbook-entry-section-heading h2 {
+	margin: 0;
+	font-size: 1.1rem;
+	line-height: 1.35;
+}
+
+.taskbook-secondary-control {
+	min-height: var(--default-clickable-area);
+	box-sizing: border-box;
+	border: 1px solid var(--color-primary-element-light-hover);
+	border-bottom-width: 2px;
+	border-radius: var(--border-radius-element);
+	background: var(--color-primary-element-light);
+	color: var(--color-primary-element-light-text);
+	padding: 1px calc(var(--default-grid-baseline) + var(--border-radius-element)) 0;
+	font: inherit;
+	font-size: var(--default-font-size);
+	font-weight: var(--font-weight-element, bold);
+	transition: color .1s linear, border-color .1s linear, background-color .1s linear, transform .1s linear;
+}
+
+.taskbook-secondary-control:hover {
+	background: var(--color-primary-element-light-hover);
+}
+
+.taskbook-secondary-control:focus-visible {
+	outline: 2px solid var(--color-main-text);
+	box-shadow: 0 0 0 4px var(--color-main-background);
+}
+
+@media (max-width: 640px) {
+	.taskbook-page {
+		padding: calc(var(--default-grid-baseline, 4px) * 3);
+	}
+
+	.taskbook-page.taskbook-page--wide {
+		padding-inline: calc(var(--default-clickable-area) + calc(var(--default-grid-baseline, 4px) * 3));
+	}
+
+	.taskbook-period-label {
+		margin-top: 0;
+	}
+
+	.taskbook-period-navigation {
+		margin-inline-start: 0;
+	}
+}
