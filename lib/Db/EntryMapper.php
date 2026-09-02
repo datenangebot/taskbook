@@ -31,6 +31,16 @@ class EntryMapper extends QBMapper {
 		return $this->findEntity($qb);
 	}
 
+	/** @throws DoesNotExistException|MultipleObjectsReturnedException */
+	public function findByClientUidForUser(string $clientUid, string $uid): Entry {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->tableName)
+			->where($qb->expr()->eq('client_uid', $qb->createNamedParameter($clientUid, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)));
+
+		return $this->findEntity($qb);
+	}
+
 	/** @return list<Entry> */
 	public function findAllForUser(string $uid): array {
 		$qb = $this->db->getQueryBuilder();
@@ -65,6 +75,17 @@ class EntryMapper extends QBMapper {
 			->executeStatement();
 
 		return $entry;
+	}
+
+	public function claimRevisionForUser(int $id, string $uid, int $baseRevision): bool {
+		$qb = $this->db->getQueryBuilder();
+		$updated = $qb->update($this->tableName)
+			->set('revision', $qb->createFunction('revision + 1'))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('revision', $qb->createNamedParameter($baseRevision, IQueryBuilder::PARAM_INT)))
+			->executeStatement();
+		return $updated === 1;
 	}
 
 	public function deleteForUser(int $id, string $uid): void {

@@ -14,7 +14,9 @@ use OCA\Taskbook\Service\Clock;
 use OCA\Taskbook\Service\ContextService;
 use OCA\Taskbook\Service\EntryService;
 use OCA\Taskbook\Service\PeriodService;
+use OCA\Taskbook\Service\SyncChangeService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
 
 final class EntryServiceTest extends TestCase {
@@ -22,6 +24,7 @@ final class EntryServiceTest extends TestCase {
 	private ContextService $contextService;
 	private PeriodService $periodService;
 	private Clock $clock;
+	private SyncChangeService $syncChangeService;
 	private Context $context;
 
 	protected function setUp(): void {
@@ -29,6 +32,7 @@ final class EntryServiceTest extends TestCase {
 		$this->contextService = $this->createMock(ContextService::class);
 		$this->periodService = $this->createMock(PeriodService::class);
 		$this->clock = $this->createMock(Clock::class);
+		$this->syncChangeService = $this->createMock(SyncChangeService::class);
 		$this->context = new Context();
 		$this->context->setId(7);
 		$this->context->setTitle('General');
@@ -36,7 +40,7 @@ final class EntryServiceTest extends TestCase {
 		$this->context->setCreatedAt($this->now());
 		$this->context->setUpdatedAt($this->now());
 		$this->contextService->method('find')->willReturn($this->context);
-		$this->contextService->method('toResponse')->willReturn(['id' => 7, 'title' => 'General', 'icon' => 'folder', 'alias' => 'g', 'createdAt' => '2026-08-28T09:00:00Z', 'updatedAt' => '2026-08-28T09:00:00Z']);
+		$this->contextService->method('toResponse')->willReturn(['id' => 7, 'revision' => 1, 'title' => 'General', 'icon' => 'folder', 'alias' => 'g', 'createdAt' => '2026-08-28T09:00:00Z', 'updatedAt' => '2026-08-28T09:00:00Z']);
 		$this->clock->method('nowUtc')->willReturn($this->now());
 	}
 
@@ -126,13 +130,14 @@ final class EntryServiceTest extends TestCase {
 	}
 
 	private function service(): EntryService {
-		return new EntryService($this->entryMapper, $this->contextService, $this->periodService, $this->clock);
+		return new EntryService($this->entryMapper, $this->contextService, $this->periodService, $this->clock, $this->syncChangeService, $this->createMock(IDBConnection::class));
 	}
 
 	private function entry(string $type, string $primaryDate, ?string $secondaryDate = null): Entry {
 		$entry = new Entry();
 		$entry->setId(3);
 		$entry->setUid('alice');
+		$entry->setClientUid('00000000-0000-4000-8000-000000000003');
 		$entry->setText($type === 'note' ? 'Project idea' : 'Pay invoice');
 		$entry->setType($type);
 		$entry->setImportant(false);

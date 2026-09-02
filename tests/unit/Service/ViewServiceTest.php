@@ -13,7 +13,9 @@ use OCA\Taskbook\Service\Clock;
 use OCA\Taskbook\Service\ContextService;
 use OCA\Taskbook\Service\EntryService;
 use OCA\Taskbook\Service\PeriodService;
+use OCA\Taskbook\Service\SyncChangeService;
 use OCA\Taskbook\Service\ViewService;
+use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
 
 final class ViewServiceTest extends TestCase {
@@ -30,7 +32,7 @@ final class ViewServiceTest extends TestCase {
 		$clock->method('userTimeZone')->willReturn(new DateTimeZone('Europe/Berlin'));
 		$clock->method('today')->willReturn(new DateTimeImmutable('2026-08-30', new DateTimeZone('Europe/Berlin')));
 		$this->periodService = new PeriodService($clock);
-		$this->entryService = new EntryService($this->entryMapper, $this->contextService, $this->periodService, $clock);
+		$this->entryService = new EntryService($this->entryMapper, $this->contextService, $this->periodService, $clock, $this->createMock(SyncChangeService::class), $this->createMock(IDBConnection::class));
 		$this->context = new Context();
 		$this->context->setId(1);
 		$this->context->setTitle('General');
@@ -41,6 +43,7 @@ final class ViewServiceTest extends TestCase {
 		$this->contextService->method('find')->willReturn($this->context);
 		$this->contextService->method('toResponse')->willReturn([
 			'id' => 1,
+			'revision' => 1,
 			'title' => 'General',
 			'icon' => '😀',
 			'alias' => 'g',
@@ -143,6 +146,7 @@ final class ViewServiceTest extends TestCase {
 		$entry = new Entry();
 		$entry->setId($id);
 		$entry->setUid('alice');
+		$entry->setClientUid(sprintf('00000000-0000-4000-8000-%012d', $id));
 		$entry->setText('Entry ' . $id);
 		$entry->setType($secondaryTarget === null ? 'task' : 'migrated_task');
 		$entry->setImportant(false);

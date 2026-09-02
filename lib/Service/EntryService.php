@@ -13,8 +13,12 @@ use OCA\Taskbook\Exception\ValidationException;
 use OCA\Taskbook\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\MultipleObjectsReturnedException;
+use OCP\IDBConnection;
 
-/** @psalm-import-type TaskbookEntry from ResponseDefinitions */
+/**
+ * @psalm-import-type TaskbookEntry from ResponseDefinitions
+ * @psalm-import-type TaskbookSyncEntry from ResponseDefinitions
+ */
 class EntryService {
 	/** @var list<string> */
 	public const TYPES = ['task', 'appointment', 'note', 'migrated_task', 'irrelevant_task'];
@@ -28,6 +32,8 @@ class EntryService {
 		private ContextService $contextService,
 		private PeriodService $periodService,
 		private Clock $clock,
+		private SyncChangeService $syncChangeService,
+		private IDBConnection $connection,
 	) {
 	}
 
@@ -41,13 +47,29 @@ class EntryService {
 		mixed $referenceType,
 		mixed $targetDate,
 		mixed $status = 'open',
+		?string $clientUid = null,
+	): array {
+		return $this->transactional(fn (): array => $this->createPersisted($uid, $text, $type, $important, $contextId, $referenceType, $targetDate, $status, $clientUid));
+	}
+
+	/** @return TaskbookEntry */
+	private function createPersisted(
+		string $uid,
+		mixed $text,
+		mixed $type,
+		mixed $important,
+		mixed $contextId,
+		mixed $referenceType,
+		mixed $targetDate,
+		mixed $status = 'open',
+		?string $clientUid = null,
 	): array {
 		$this->requireUid($uid);
 		$period = $this->periodService->validate($referenceType, $targetDate);
 		$context = $this->contextService->find($uid, $this->validateId($contextId, 'context'));
 		$entry = new Entry();
 		$entry->setUid($uid);
-		$entry->setClientUid($this->uuid());
+		$entry->setClientUid($clientUid ?? $this->uuid());
 		$entry->setRevision(1);
 		$entry->setText($this->validateText($text));
 		$entry->setType($this->validateType($type));
@@ -61,7 +83,26 @@ class EntryService {
 		$entry->setCreatedAt($this->clock->nowUtc());
 		$entry->setUpdatedAt($this->clock->nowUtc());
 
-		return $this->toResponse($this->entryMapper->create($entry), $context);
+		$entry = $this->entryMapper->create($entry);
+		$this->syncChangeService->entryUpsert($entry);
+		return $this->toResponse($entry, $context);
+	}
+
+	/** @return TaskbookSyncEntry */
+	public function createForSync(
+		string $uid,
+		string $clientUid,
+		mixed $text,
+		mixed $type,
+		mixed $important,
+		mixed $contextId,
+		mixed $referenceType,
+		mixed $targetDate,
+		mixed $status = 'open',
+	): array {
+		$this->create($uid, $text, $type, $important, $contextId, $referenceType, $targetDate, $status, $clientUid);
+		$entry = $this->findByClientUid($uid, $clientUid);
+		return $this->toSyncResponse($entry, $this->contextService->find($uid, $entry->getContextId()));
 	}
 
 	/** @return TaskbookEntry */
@@ -75,6 +116,41 @@ class EntryService {
 		mixed $referenceType,
 		mixed $targetDate,
 		mixed $status,
+		bool $revisionAlreadyClaimed = false,
+	): array {
+		return $this->transactional(fn (): array => $this->updatePersisted($uid, $id, $text, $type, $important, $contextId, $referenceType, $targetDate, $status, $revisionAlreadyClaimed));
+	}
+
+	/** @return TaskbookSyncEntry */
+	public function updateForSync(
+		string $uid,
+		int $id,
+		mixed $text,
+		mixed $type,
+		mixed $important,
+		mixed $contextId,
+		mixed $referenceType,
+		mixed $targetDate,
+		mixed $status,
+		bool $revisionAlreadyClaimed = false,
+	): array {
+		$this->update($uid, $id, $text, $type, $important, $contextId, $referenceType, $targetDate, $status, $revisionAlreadyClaimed);
+		$entry = $this->find($uid, $id);
+		return $this->toSyncResponse($entry, $this->contextService->find($uid, $entry->getContextId()));
+	}
+
+	/** @return TaskbookEntry */
+	private function updatePersisted(
+		string $uid,
+		int $id,
+		mixed $text,
+		mixed $type,
+		mixed $important,
+		mixed $contextId,
+		mixed $referenceType,
+		mixed $targetDate,
+		mixed $status,
+		bool $revisionAlreadyClaimed = false,
 	): array {
 		$entry = $this->find($uid, $id);
 		$period = $this->periodService->validate($referenceType, $targetDate);
@@ -94,9 +170,13 @@ class EntryService {
 		$entry->setStatus($status);
 		$entry->setCompletedAt($status === 'completed' ? ($entry->getCompletedAt() ?? $this->clock->nowUtc()) : null);
 		$entry->setUpdatedAt($this->clock->nowUtc());
-		$entry->setRevision($entry->getRevision() + 1);
+		if (!$revisionAlreadyClaimed) {
+			$entry->setRevision($entry->getRevision() + 1);
+		}
 
-		return $this->toResponse($this->entryMapper->updateForUser($entry, $uid), $context);
+		$entry = $this->entryMapper->updateForUser($entry, $uid);
+		$this->syncChangeService->entryUpsert($entry);
+		return $this->toResponse($entry, $context);
 	}
 
 	/** @return TaskbookEntry */
@@ -109,9 +189,25 @@ class EntryService {
 		}
 	}
 
-	public function delete(string $uid, int $id): void {
-		$this->find($uid, $id);
+	public function delete(string $uid, int $id, bool $revisionAlreadyClaimed = false): void {
+		$this->transactional(function () use ($uid, $id, $revisionAlreadyClaimed): void {
+			$this->deletePersisted($uid, $id, $revisionAlreadyClaimed);
+		});
+	}
+
+	private function deletePersisted(string $uid, int $id, bool $revisionAlreadyClaimed): void {
+		$entry = $this->find($uid, $id);
 		$this->entryMapper->deleteForUser($id, $uid);
+		$this->syncChangeService->entryDelete($uid, $entry->getClientUid(), $id, $entry->getRevision() + ($revisionAlreadyClaimed ? 0 : 1));
+	}
+
+	public function findByClientUid(string $uid, string $clientUid): Entry {
+		$this->requireUid($uid);
+		try {
+			return $this->entryMapper->findByClientUidForUser($clientUid, $uid);
+		} catch (DoesNotExistException|MultipleObjectsReturnedException $exception) {
+			throw new EntryNotFoundException('Entry not found.', 0, $exception);
+		}
 	}
 
 	public function find(string $uid, int $id): Entry {
@@ -146,6 +242,15 @@ class EntryService {
 			'completedAt' => $completedAt === null ? null : $this->formatTimestamp($completedAt),
 			'createdAt' => $this->formatTimestamp($entry->getCreatedAt()),
 			'updatedAt' => $this->formatTimestamp($entry->getUpdatedAt()),
+		];
+	}
+
+	/** @return TaskbookSyncEntry */
+	public function toSyncResponse(Entry $entry, \OCA\Taskbook\Db\Context $context): array {
+		return [
+			'clientUid' => $entry->getClientUid(),
+			'revision' => $entry->getRevision(),
+			...$this->toResponse($entry, $context),
 		];
 	}
 
@@ -276,5 +381,29 @@ class EntryService {
 		$bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
 		$hex = bin2hex($bytes);
 		return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4) . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20);
+	}
+
+	/**
+	 * @template TReturn
+	 * @param callable(): TReturn $operation
+	 * @return TReturn
+	 */
+	private function transactional(callable $operation): mixed {
+		$ownsTransaction = !$this->connection->inTransaction();
+		if ($ownsTransaction) {
+			$this->connection->beginTransaction();
+		}
+		try {
+			$result = $operation();
+			if ($ownsTransaction) {
+				$this->connection->commit();
+			}
+			return $result;
+		} catch (\Throwable $exception) {
+			if ($ownsTransaction && $this->connection->inTransaction()) {
+				$this->connection->rollBack();
+			}
+			throw $exception;
+		}
 	}
 }

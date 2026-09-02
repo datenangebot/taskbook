@@ -90,7 +90,7 @@ docker run --rm \
 	sh -lc 'npm ci && npm run typecheck && npm run lint && npm run stylelint && npm run test:unit && npm run build'
 
 section "Frontend assets in Nextcloud"
-run_nextcloud 'for asset in js/taskbook-main.mjs js/taskbook-dashboard.mjs css/taskbook-main.css css/taskbook-dashboard.css; do
+run_nextcloud 'for asset in js/taskbook-main.mjs js/taskbook-dashboard.mjs js/taskbook-pwa.mjs js/taskbook-pwa-service-worker.mjs css/taskbook-main.css css/taskbook-dashboard.css css/taskbook-pwa.css img/pwa-192.png img/pwa-512.png img/pwa-maskable-512.png; do
 	test -s "$asset" || { echo "Missing or empty frontend asset: $asset" >&2; exit 1; }
 done'
 

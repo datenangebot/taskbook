@@ -71,6 +71,12 @@ For ongoing development, the Dockerized watch process is available:
 docker run --rm -v "$PWD":/app -w /app node:24-bookworm sh -lc 'npm ci && npm run watch'
 ```
 
+For ongoing standalone PWA development, run its independent watcher instead:
+
+```sh
+docker run --rm -v "$PWD":/app -w /app node:24-bookworm sh -lc 'npm ci && npm run watch:pwa'
+```
+
 Stop the watch process with `Ctrl+C`, then run the production build before
 considering the frontend change complete. A source-only frontend change is
 never complete: run the applicable Docker checks, rebuild the assets, and
