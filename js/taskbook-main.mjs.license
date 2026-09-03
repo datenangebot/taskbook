@@ -18,7 +18,7 @@ This file is generated from multiple sources. Included packages:
 	- version: 4.1.2
 	- license: MIT
 - taskbook
-	- version: 1.0.0
+	- version: 1.1.0
 	- license: AGPL-3.0-or-later
 - vue-router
 	- version: 5.3.0

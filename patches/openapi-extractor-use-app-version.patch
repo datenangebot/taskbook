@@ -1,0 +1,11 @@
+--- a/vendor-bin/openapi-extractor/vendor/nextcloud/openapi-extractor/generate-spec.php
++++ b/vendor-bin/openapi-extractor/vendor/nextcloud/openapi-extractor/generate-spec.php
+@@ -126,7 +126,7 @@ $openapi = [
+ 	'openapi' => $openapiVersion,
+ 	'info' => [
+ 		'title' => $appID,
+-		'version' => '0.0.1', // This marks the document version and not the implementation version
++		'version' => $appVersion,
+ 		'description' => $appSummary,
+ 		'license' => Helpers::license($openapiVersion, $appLicence),
+ 	],
