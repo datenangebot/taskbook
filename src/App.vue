@@ -20,7 +20,7 @@ import { notifyError } from './notifications.ts'
 import { entryChangeKey, openCaptureKey, settingsKey } from './state.ts'
 import { isoWeekKey, localDateKey } from './utils/dates.ts'
 import { registerImmediateItemNavigation } from './utils/itemListKeyboard.ts'
-import { registerQuickAddShortcut } from './utils/quickAddShortcut.ts'
+import { registerTaskbookShortcuts } from './utils/quickAddShortcut.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,7 +29,7 @@ const entryChange = ref<EntryChange | null>(null)
 const settingsOpen = ref(false)
 const captureOpen = ref(false)
 const supportOpen = ref(false)
-let unregisterQuickAddShortcut = () => {}
+let unregisterTaskbookShortcuts = () => {}
 let unregisterItemNavigation = () => {}
 provide(settingsKey, settings)
 provide(entryChangeKey, entryChange)
@@ -49,10 +49,13 @@ function navigate(name: string) { const today = localDateKey(); void router.push
 function captured(entry: Entry) { entryChange.value = { entry } }
 onMounted(() => {
 	void loadSettings()
-	unregisterQuickAddShortcut = registerQuickAddShortcut(() => { captureOpen.value = true })
+	unregisterTaskbookShortcuts = registerTaskbookShortcuts({
+		onQuickAdd: () => { captureOpen.value = true },
+		onViewNavigation: navigate,
+	})
 	unregisterItemNavigation = registerImmediateItemNavigation(() => document.querySelector('[data-taskbook-navigation-scope]'))
 })
-onBeforeUnmount(() => { unregisterQuickAddShortcut(); unregisterItemNavigation() })
+onBeforeUnmount(() => { unregisterTaskbookShortcuts(); unregisterItemNavigation() })
 </script>
 
 <template>

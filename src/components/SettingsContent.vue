@@ -126,7 +126,10 @@ watch(() => editor.value?.title, (title) => {
 				<span>{{ t('taskbook', 'Icon') }}</span><span>{{ t('taskbook', 'Title') }}</span><span>{{ t('taskbook', 'Shortcut') }}</span><span>{{ t('taskbook', 'Default context') }}</span><span class="visually-hidden">{{ t('taskbook', 'Actions') }}</span>
 			</div>
 			<template v-for="context in contexts" :key="context.id">
-				<form v-if="isEditing(context) && editor !== null" :class="$style.row" @submit.prevent="saveContext">
+				<form v-if="isEditing(context) && editor !== null"
+					:class="$style.row"
+					data-taskbook-editor-active="true"
+					@submit.prevent="saveContext">
 					<NcEmojiPicker close-on-select :selected-emoji="editor.icon" @select="selectEmoji">
 						<NcButton :aria-label="t('taskbook', 'Choose icon for {context}', { context: context.title })"
 							:title="t('taskbook', 'Choose icon for {context}', { context: context.title })"
@@ -222,7 +225,10 @@ watch(() => editor.value?.title, (title) => {
 					</div>
 				</div>
 			</template>
-			<form v-if="creating && editor !== null" :class="$style.row" @submit.prevent="saveContext">
+			<form v-if="creating && editor !== null"
+				:class="$style.row"
+				data-taskbook-editor-active="true"
+				@submit.prevent="saveContext">
 				<NcEmojiPicker close-on-select :selected-emoji="editor.icon" @select="selectEmoji">
 					<NcButton :aria-label="t('taskbook', 'Choose icon for new context')"
 						:title="t('taskbook', 'Choose icon for new context')"
@@ -307,12 +313,17 @@ watch(() => editor.value?.title, (title) => {
 		:name="t('taskbook', 'Keyboard shortcuts')"
 		:order="20">
 		<div :class="$style.shortcuts">
-			<p>{{ t('taskbook', 'Keyboard shortcuts are available while using Taskbook unless they are disabled in your Nextcloud accessibility settings. Shortcuts are ignored while typing in editable fields.') }}</p>
+			<p>{{ t('taskbook', 'Keyboard shortcuts are available while using Taskbook unless they are disabled in your Nextcloud accessibility settings. View shortcuts are inactive while a text field or editor is open.') }}</p>
 			<p :class="$style.shortcutHeading">
-				{{ t('taskbook', 'Quick add') }}
+				{{ t('taskbook', 'View navigation') }}
 			</p>
 			<dl>
-				<div><dt><kbd>Shift</kbd> + <kbd>N</kbd></dt><dd>{{ t('taskbook', 'Open Quick Add') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>O</kbd></dt><dd>{{ t('taskbook', 'Overview') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>D</kbd></dt><dd>{{ t('taskbook', 'Day') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>W</kbd></dt><dd>{{ t('taskbook', 'Week') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>M</kbd></dt><dd>{{ t('taskbook', 'Month') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>F</kbd></dt><dd>{{ t('taskbook', 'Future Log') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>N</kbd></dt><dd>{{ t('taskbook', 'New entry') }}</dd></div>
 			</dl>
 			<p :class="$style.shortcutHeading">
 				{{ t('taskbook', 'Period navigation') }}

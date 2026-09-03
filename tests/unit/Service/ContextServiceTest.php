@@ -39,7 +39,7 @@ final class ContextServiceTest extends TestCase {
 		$mapper->expects($this->once())->method('findByAliasForUser')->with('work', 'alice', null)->willReturn(null);
 		$mapper->expects($this->once())->method('create')->with($this->callback(function (Context $context): bool {
 			$context->setId(4);
-			return $context->getUid() === 'alice' && $context->getAlias() === 'work';
+			return $context->getUid() === 'alice' && $context->getAlias() === 'work' && $context->getRevision() === 1;
 		}))->willReturnCallback(fn (Context $context): Context => $context);
 
 		$response = $this->service($mapper)->create('alice', 'Work', '💼', ' WoRk ');

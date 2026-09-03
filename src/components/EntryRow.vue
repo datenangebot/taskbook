@@ -178,6 +178,7 @@ function handleRowKeydown(event: KeyboardEvent) {
 <template>
 	<article :class="[$style.row, { [$style.completed]: entry.status === 'completed', [$style.compact]: compact, [$style.editing]: editing }]"
 		:aria-label="entry.status === 'completed' ? t('taskbook', 'Completed entry: {text}', { text: entry.text }) : t('taskbook', 'Entry: {text}', { text: entry.text })"
+		:data-taskbook-editor-active="editing ? 'true' : undefined"
 		:data-taskbook-entry-row="true"
 		:tabindex="listFirst ? 0 : -1"
 		@focus="focusRow"

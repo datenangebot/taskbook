@@ -113,6 +113,18 @@ final class EntryServiceTest extends TestCase {
 		$this->service()->update('bob', 3, 'Pay invoice', 'task', false, 7, 'day', '2026-08-31', 'open');
 	}
 
+	public function testNormalEntryResponseDoesNotExposeSyncMetadata(): void {
+		$entry = $this->entry('task', '2026-08-28');
+		$entry->setClientUid('f02e095c-4bc4-4a0b-bd56-442e1141387e');
+		$entry->setRevision(2);
+		$this->periodService->method('format')->willReturnCallback(static fn (?DateTimeImmutable $date): ?string => $date?->format('Y-m-d'));
+
+		$response = $this->service()->toResponse($entry, $this->context);
+
+		self::assertArrayNotHasKey('clientUid', $response);
+		self::assertArrayNotHasKey('revision', $response);
+	}
+
 	private function service(): EntryService {
 		return new EntryService($this->entryMapper, $this->contextService, $this->periodService, $this->clock);
 	}

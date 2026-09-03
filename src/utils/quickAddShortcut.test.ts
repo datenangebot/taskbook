@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { keyboardShortcutsDisabled, registerPeriodNavigationShortcuts, registerQuickAddShortcut } from './quickAddShortcut.ts'
+import { keyboardShortcutsDisabled, registerPeriodNavigationShortcuts, registerQuickAddShortcut, registerTaskbookShortcuts } from './quickAddShortcut.ts'
 
 type ShortcutEvent = Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'isComposing' | 'key' | 'metaKey' | 'shiftKey' | 'target'>
 
@@ -24,7 +24,11 @@ function listenerTarget() {
 				removed++
 			},
 		},
-		dispatch: (event: ShortcutEvent) => listener?.({ ...event, preventDefault: () => {} } as KeyboardEvent),
+		dispatch: (event: ShortcutEvent) => {
+			let prevented = false
+			listener?.({ ...event, preventDefault: () => { prevented = true } } as KeyboardEvent)
+			return prevented
+		},
 		registered: () => registered,
 		removed: () => removed,
 	}
@@ -79,6 +83,75 @@ describe('Quick Add shortcut', () => {
 		source.dispatch(shortcutEvent())
 		expect(source.removed()).toBe(1)
 		expect(opened).toBe(0)
+	})
+})
+
+describe('view navigation shortcuts', () => {
+	it('maps strict Shift+letter shortcuts to views and Quick Add', () => {
+		const source = listenerTarget()
+		const actions: string[] = []
+		let opened = 0
+		registerTaskbookShortcuts({ onQuickAdd: () => { opened++ }, onViewNavigation: (action) => actions.push(action) }, source.target)
+
+		for (const key of ['O', 'D', 'W', 'M', 'F']) {
+			expect(source.dispatch(shortcutEvent({ key }))).toBe(true)
+		}
+		expect(source.dispatch(shortcutEvent({ key: 'N' }))).toBe(true)
+
+		expect(actions).toEqual(['overview', 'day', 'week', 'month', 'future'])
+		expect(opened).toBe(1)
+	})
+
+	it('ignores Ctrl, Alt, and Meta modified view shortcuts', () => {
+		const source = listenerTarget()
+		let navigated = 0
+		registerTaskbookShortcuts({ onQuickAdd: () => { navigated++ }, onViewNavigation: () => { navigated++ } }, source.target)
+
+		expect(source.dispatch(shortcutEvent({ key: 'D', ctrlKey: true }))).toBe(false)
+		expect(source.dispatch(shortcutEvent({ key: 'D', altKey: true }))).toBe(false)
+		expect(source.dispatch(shortcutEvent({ key: 'D', metaKey: true }))).toBe(false)
+		expect(navigated).toBe(0)
+	})
+
+	it('leaves Shift+letter input untouched in editable fields', () => {
+		const source = listenerTarget()
+		const input = { closest: (selector: string) => selector.includes('input') ? {} as Element : null } as unknown as EventTarget
+		let handled = 0
+		registerTaskbookShortcuts({ onQuickAdd: () => { handled++ }, onViewNavigation: () => { handled++ } }, source.target)
+
+		for (const key of ['D', 'F', 'W', 'M', 'O', 'N']) {
+			expect(source.dispatch(shortcutEvent({ key, target: input }))).toBe(false)
+		}
+		expect(handled).toBe(0)
+	})
+
+	it('leaves shortcuts inactive while an inline editor or dialog owns focus', () => {
+		const source = listenerTarget()
+		const editorControl = { closest: (selector: string) => selector.includes('data-taskbook-editor-active') ? {} as Element : null } as unknown as EventTarget
+		const dialogControl = { closest: (selector: string) => selector.includes('[role="dialog"]') ? {} as Element : null } as unknown as EventTarget
+		let handled = 0
+		registerTaskbookShortcuts({ onQuickAdd: () => { handled++ }, onViewNavigation: () => { handled++ } }, source.target)
+
+		expect(source.dispatch(shortcutEvent({ key: 'D', target: editorControl }))).toBe(false)
+		expect(source.dispatch(shortcutEvent({ key: 'N', target: editorControl }))).toBe(false)
+		expect(source.dispatch(shortcutEvent({ key: 'F', target: dialogControl }))).toBe(false)
+		expect(handled).toBe(0)
+	})
+
+	it('does not register when Nextcloud keyboard shortcuts are disabled', () => {
+		const source = listenerTarget()
+		registerTaskbookShortcuts({ onQuickAdd: () => {}, onViewNavigation: () => {} }, source.target, { disableKeyboardShortcuts: () => true })
+		expect(source.registered()).toBe(0)
+	})
+
+	it('removes its single listener when the application unmounts', () => {
+		const source = listenerTarget()
+		let handled = 0
+		const unregister = registerTaskbookShortcuts({ onQuickAdd: () => { handled++ }, onViewNavigation: () => { handled++ } }, source.target)
+		unregister()
+		expect(source.dispatch(shortcutEvent({ key: 'D' }))).toBe(false)
+		expect(source.removed()).toBe(1)
+		expect(handled).toBe(0)
 	})
 })
 

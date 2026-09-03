@@ -12,6 +12,7 @@ use OCP\DB\Types;
 /** @psalm-suppress PropertyNotSetInConstructor The mapper assigns persisted values. */
 class Context extends Entity {
 	protected ?string $uid = null;
+	protected ?int $revision = null;
 	protected ?string $title = null;
 	protected ?string $icon = null;
 	protected ?string $alias = null;
@@ -20,6 +21,7 @@ class Context extends Entity {
 
 	public function __construct() {
 		$this->addType('id', Types::BIGINT);
+		$this->addType('revision', Types::BIGINT);
 		$this->addType('createdAt', Types::DATETIME_IMMUTABLE);
 		$this->addType('updatedAt', Types::DATETIME_IMMUTABLE);
 	}
@@ -31,6 +33,14 @@ class Context extends Entity {
 
 	public function setUid(string $uid): void {
 		$this->setter('uid', [$uid]);
+	}
+
+	public function getRevision(): int {
+		return $this->revision ?? 1;
+	}
+
+	public function setRevision(int $revision): void {
+		$this->setter('revision', [$revision]);
 	}
 
 	public function getTitle(): string {

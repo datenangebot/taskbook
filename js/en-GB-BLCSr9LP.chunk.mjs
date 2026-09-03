@@ -1,2 +1,0 @@
-import{m as o,l as t,f as a,a as r}from"./index-BrfxGOWZ.chunk.mjs";import{f as s}from"./formatLong-D5Rk3_Bk.chunk.mjs";import"./icon-yPi-iL04.chunk.mjs";import"./index-calzV_2h.chunk.mjs";import"./be-tarask-CeoZ4d-c.chunk.mjs";import"./Close-DCRSet71.chunk.mjs";const c={code:"en-GB",formatDistance:r,formatLong:s,formatRelative:a,localize:t,match:o,options:{weekStartsOn:1,firstWeekContainsDate:4}};export{c as enGB};
-//# sourceMappingURL=en-GB-BLCSr9LP.chunk.mjs.map
