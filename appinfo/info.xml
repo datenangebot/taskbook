@@ -18,6 +18,10 @@ Taskbook is an independent application and is not affiliated with or endorsed by
 	<category>office</category>
 	<category>organization</category>
 	<bugs>https://github.com/datenangebot/taskbook/issues</bugs>
+	<screenshot small-thumbnail="https://dl.datenangebot.de/nextcloud/taskbook/taskbook-1-small.png">https://dl.datenangebot.de/nextcloud/taskbook/taskbook-1.png</screenshot>
+    <screenshot>https://dl.datenangebot.de/nextcloud/taskbook/taskbook-2.png</screenshot>
+    <screenshot>https://dl.datenangebot.de/nextcloud/taskbook/taskbook-3.png</screenshot>
+    <screenshot>https://dl.datenangebot.de/nextcloud/taskbook/taskbook-4.png</screenshot>	
 	<dependencies>
 		<php min-version="8.2" max-version="8.5"/>
 		<nextcloud min-version="33" max-version="35"/>
