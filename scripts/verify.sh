@@ -72,6 +72,9 @@ run_nextcloud 'composer run test:unit -- --do-not-cache-result'
 section "OpenAPI generation"
 run_nextcloud 'composer run openapi'
 
+section "Taskbook version metadata"
+"$REPO_ROOT/scripts/check-version-consistency.sh"
+
 section "Generated OpenAPI artifacts"
 if [[ -n "$(git status --porcelain -- ':(glob)openapi*.json')" ]]; then
 	echo 'Generated OpenAPI artifacts differ from the committed/indexed state.' >&2
