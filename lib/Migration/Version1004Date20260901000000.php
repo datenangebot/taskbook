@@ -13,8 +13,8 @@ use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 /**
- * Adds stable synchronization identities and revisions used by the offline
- * client while retaining canonical server entities for the Nextcloud UI.
+ * Adds stable synchronization identities, server revisions, a cursor log, and
+ * the idempotency ledger used by offline clients.
  *
  * @psalm-suppress UnusedClass Migrations are discovered by Nextcloud.
  * @psalm-suppress UndefinedDocblockClass Nextcloud's schema wrapper references Doctrine types not shipped to Psalm.

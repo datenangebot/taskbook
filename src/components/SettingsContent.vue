@@ -2,6 +2,7 @@
 import type { Context, ContextIcon as ContextIconValue, Settings } from '../types.ts'
 
 import { t } from '@nextcloud/l10n'
+import { generateUrl } from '@nextcloud/router'
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import NcAppSettingsSection from '@nextcloud/vue/components/NcAppSettingsSection'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -60,6 +61,11 @@ function updateAlias(event: Event) {
 }
 
 function aliasErrorId(id: number | null): string { return `taskbook-context-shortcut-error-${id ?? 'new'}` }
+
+function openPwa(reset = false) {
+	const url = generateUrl('/apps/taskbook/pwa/') + (reset ? '?disconnect=1' : '')
+	window.open(url, '_blank', 'noopener,noreferrer')
+}
 
 async function saveContext() {
 	const draft = editor.value
@@ -309,9 +315,18 @@ watch(() => editor.value?.title, (title) => {
 			<NcButton :text="t('taskbook', 'Cancel')" @click="deleteCandidate = null" /><NcButton :text="t('taskbook', 'Delete')" variant="error" @click="removeContext" />
 		</template>
 	</TaskbookModal>
+	<NcAppSettingsSection id="pwa"
+		:description="t('taskbook', 'Install Taskbook as an offline-capable application for quick access to your Day view and Future Log.')"
+		:name="t('taskbook', 'Progressive Web App')"
+		:order="20">
+		<div :class="$style.pwaActions">
+			<NcButton :text="t('taskbook', 'Open / Set up PWA')" variant="primary" @click="openPwa()" />
+			<NcButton :text="t('taskbook', 'Reset PWA connection')" variant="secondary" @click="openPwa(true)" />
+		</div>
+	</NcAppSettingsSection>
 	<NcAppSettingsSection id="keyboard-shortcuts"
 		:name="t('taskbook', 'Keyboard shortcuts')"
-		:order="20">
+		:order="30">
 		<div :class="$style.shortcuts">
 			<p>{{ t('taskbook', 'Keyboard shortcuts are available while using Taskbook unless they are disabled in your Nextcloud accessibility settings. View shortcuts are inactive while a text field or editor is open.') }}</p>
 			<p :class="$style.shortcutHeading">
@@ -398,6 +413,8 @@ watch(() => editor.value?.title, (title) => {
 .shortcuts kbd { border:1px solid var(--color-border); border-radius:var(--border-radius-element); background:var(--color-background-dark); padding:1px 4px; font:inherit; }
 
 .shortcutNote { color:var(--color-text-maxcontrast); font-size:.9rem; }
+
+.pwaActions { display:flex; flex-wrap:wrap; gap:8px; padding-inline:16px; }
 
 @media (max-width:640px) {
 	.header { display:none; }

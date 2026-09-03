@@ -27,6 +27,7 @@
                     "title",
                     "icon",
                     "alias",
+                    "revision",
                     "createdAt",
                     "updatedAt"
                 ],
@@ -44,6 +45,10 @@
                     "alias": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "revision": {
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "createdAt": {
                         "type": "string"
@@ -139,6 +144,60 @@
                     }
                 }
             },
+            "EntryRequest": {
+                "type": "object",
+                "required": [
+                    "text",
+                    "type",
+                    "important",
+                    "contextId",
+                    "referenceType",
+                    "targetDate",
+                    "status"
+                ],
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "task",
+                            "appointment",
+                            "note",
+                            "migrated_task",
+                            "irrelevant_task"
+                        ]
+                    },
+                    "important": {
+                        "type": "boolean"
+                    },
+                    "contextId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "referenceType": {
+                        "type": "string",
+                        "enum": [
+                            "day",
+                            "week",
+                            "month",
+                            "none"
+                        ]
+                    },
+                    "targetDate": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "open",
+                            "completed"
+                        ]
+                    }
+                }
+            },
             "OCSMeta": {
                 "type": "object",
                 "required": [
@@ -226,6 +285,279 @@
                         "items": {
                             "$ref": "#/components/schemas/Context"
                         }
+                    }
+                }
+            },
+            "SyncConflict": {
+                "type": "object",
+                "required": [
+                    "operationId",
+                    "clientUid",
+                    "baseRevision",
+                    "serverRevision",
+                    "reason",
+                    "mutationType",
+                    "localEntry",
+                    "serverEntry"
+                ],
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "clientUid": {
+                        "type": "string"
+                    },
+                    "baseRevision": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "serverRevision": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "mutationType": {
+                        "type": "string",
+                        "enum": [
+                            "create",
+                            "update",
+                            "delete"
+                        ]
+                    },
+                    "localEntry": {
+                        "nullable": true,
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EntryRequest"
+                            }
+                        ]
+                    },
+                    "serverEntry": {
+                        "nullable": true,
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SyncEntry"
+                            }
+                        ]
+                    }
+                }
+            },
+            "SyncDeletion": {
+                "type": "object",
+                "required": [
+                    "clientUid",
+                    "revision"
+                ],
+                "properties": {
+                    "clientUid": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "SyncEntry": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "clientUid",
+                    "revision",
+                    "text",
+                    "type",
+                    "important",
+                    "contextId",
+                    "context",
+                    "referenceType",
+                    "primaryTargetDate",
+                    "secondaryTargetDate",
+                    "effectiveTargetDate",
+                    "status",
+                    "completedAt",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "clientUid": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "task",
+                            "appointment",
+                            "note",
+                            "migrated_task",
+                            "irrelevant_task"
+                        ]
+                    },
+                    "important": {
+                        "type": "boolean"
+                    },
+                    "contextId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "context": {
+                        "$ref": "#/components/schemas/Context"
+                    },
+                    "referenceType": {
+                        "type": "string",
+                        "enum": [
+                            "day",
+                            "week",
+                            "month",
+                            "none"
+                        ]
+                    },
+                    "primaryTargetDate": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "secondaryTargetDate": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "effectiveTargetDate": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "open",
+                            "completed"
+                        ]
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                }
+            },
+            "SyncMutation": {
+                "type": "object",
+                "required": [
+                    "operationId",
+                    "clientUid",
+                    "type",
+                    "baseRevision",
+                    "entry"
+                ],
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "clientUid": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "create",
+                            "update",
+                            "delete"
+                        ]
+                    },
+                    "baseRevision": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "entry": {
+                        "nullable": true,
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EntryRequest"
+                            }
+                        ]
+                    }
+                }
+            },
+            "SyncResponse": {
+                "type": "object",
+                "required": [
+                    "canonicalChanges",
+                    "deletions",
+                    "contexts",
+                    "defaultContextId",
+                    "acknowledgedOperationIds",
+                    "conflicts",
+                    "nextCursor",
+                    "hasMore",
+                    "serverTime",
+                    "timezone",
+                    "locale"
+                ],
+                "properties": {
+                    "canonicalChanges": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SyncEntry"
+                        }
+                    },
+                    "deletions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SyncDeletion"
+                        }
+                    },
+                    "contexts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Context"
+                        }
+                    },
+                    "defaultContextId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "acknowledgedOperationIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "conflicts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SyncConflict"
+                        }
+                    },
+                    "nextCursor": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "hasMore": {
+                        "type": "boolean"
+                    },
+                    "serverTime": {
+                        "type": "string"
+                    },
+                    "timezone": {
+                        "type": "string"
+                    },
+                    "locale": {
+                        "type": "string"
                     }
                 }
             }
@@ -1643,6 +1975,262 @@
                                                     "$ref": "#/components/schemas/OCSMeta"
                                                 },
                                                 "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/taskbook/api/v1/sync": {
+            "post": {
+                "operationId": "sync-sync",
+                "summary": "Synchronize one offline Taskbook installation.",
+                "description": "A null cursor requests the initial full dataset. Later calls use the returned cursor and push at most 100 idempotent mutations.",
+                "tags": [
+                    "sync"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "installationId"
+                                ],
+                                "properties": {
+                                    "installationId": {
+                                        "type": "string",
+                                        "description": "Stable UUID for this installed client."
+                                    },
+                                    "cursor": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Last acknowledged server cursor, or null initially."
+                                    },
+                                    "mutations": {
+                                        "type": "array",
+                                        "default": [],
+                                        "description": "Ordered create, update, and delete mutations.",
+                                        "items": {
+                                            "$ref": "#/components/schemas/SyncMutation"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Synchronization result returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/SyncResponse"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid synchronization request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/taskbook/api/v1/health": {
+            "get": {
+                "operationId": "sync-health",
+                "summary": "Confirm that Taskbook is reachable with the supplied credentials.",
+                "tags": [
+                    "sync"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Taskbook is reachable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "status",
+                                                        "serverTime"
+                                                    ],
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "ok"
+                                                            ]
+                                                        },
+                                                        "serverTime": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
