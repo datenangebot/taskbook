@@ -12,6 +12,8 @@ use OCP\DB\Types;
 /** @psalm-suppress PropertyNotSetInConstructor The mapper assigns persisted values. */
 class Entry extends Entity {
 	protected ?string $uid = null;
+	protected ?string $clientUid = null;
+	protected ?int $revision = null;
 	protected ?string $text = null;
 	protected ?string $type = null;
 	protected bool $important = false;
@@ -27,6 +29,7 @@ class Entry extends Entity {
 	public function __construct() {
 		$this->addType('id', Types::BIGINT);
 		$this->addType('important', Types::BOOLEAN);
+		$this->addType('revision', Types::BIGINT);
 		$this->addType('contextId', Types::BIGINT);
 		$this->addType('primaryTargetDate', Types::DATE_IMMUTABLE);
 		$this->addType('secondaryTargetDate', Types::DATE_IMMUTABLE);
@@ -42,6 +45,22 @@ class Entry extends Entity {
 
 	public function setUid(string $uid): void {
 		$this->setter('uid', [$uid]);
+	}
+
+	public function getClientUid(): string {
+		return $this->clientUid ?? '';
+	}
+
+	public function setClientUid(string $clientUid): void {
+		$this->setter('clientUid', [$clientUid]);
+	}
+
+	public function getRevision(): int {
+		return $this->revision ?? 1;
+	}
+
+	public function setRevision(int $revision): void {
+		$this->setter('revision', [$revision]);
 	}
 
 	public function getText(): string {

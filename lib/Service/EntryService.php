@@ -47,6 +47,8 @@ class EntryService {
 		$context = $this->contextService->find($uid, $this->validateId($contextId, 'context'));
 		$entry = new Entry();
 		$entry->setUid($uid);
+		$entry->setClientUid($this->uuid());
+		$entry->setRevision(1);
 		$entry->setText($this->validateText($text));
 		$entry->setType($this->validateType($type));
 		$entry->setImportant($this->validateImportant($important));
@@ -92,6 +94,7 @@ class EntryService {
 		$entry->setStatus($status);
 		$entry->setCompletedAt($status === 'completed' ? ($entry->getCompletedAt() ?? $this->clock->nowUtc()) : null);
 		$entry->setUpdatedAt($this->clock->nowUtc());
+		$entry->setRevision($entry->getRevision() + 1);
 
 		return $this->toResponse($this->entryMapper->updateForUser($entry, $uid), $context);
 	}
@@ -265,5 +268,13 @@ class EntryService {
 		if ($uid === '') {
 			throw new ValidationException('An authenticated user is required.');
 		}
+	}
+
+	private function uuid(): string {
+		$bytes = random_bytes(16);
+		$bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+		$bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+		$hex = bin2hex($bytes);
+		return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4) . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20);
 	}
 }

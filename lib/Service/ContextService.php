@@ -42,6 +42,7 @@ class ContextService {
 		$this->requireAvailableAlias($uid, $validatedAlias);
 		$context = new Context();
 		$context->setUid($uid);
+		$context->setRevision(1);
 		$context->setTitle($this->validateTitle($title));
 		$context->setIcon($this->validateIcon($icon));
 		$context->setAlias($validatedAlias);
@@ -68,6 +69,7 @@ class ContextService {
 		$context->setIcon($this->validateIcon($icon));
 		$context->setAlias($validatedAlias);
 		$context->setUpdatedAt($this->clock->nowUtc());
+		$context->setRevision($context->getRevision() + 1);
 
 		try {
 			return $this->toResponse($this->contextMapper->updateForUser($context, $uid));

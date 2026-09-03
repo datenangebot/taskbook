@@ -64,6 +64,7 @@ class ContextMapper extends QBMapper {
 
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->tableName)
+			->set('revision', $qb->createNamedParameter($context->getRevision(), IQueryBuilder::PARAM_INT))
 			->set('title', $qb->createNamedParameter($context->getTitle(), IQueryBuilder::PARAM_STR))
 			->set('icon', $qb->createNamedParameter($context->getIcon(), IQueryBuilder::PARAM_STR))
 			->set('alias', $qb->createNamedParameter($context->getAlias(), IQueryBuilder::PARAM_STR))

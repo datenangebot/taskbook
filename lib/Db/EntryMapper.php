@@ -48,6 +48,8 @@ class EntryMapper extends QBMapper {
 
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->tableName)
+			->set('client_uid', $qb->createNamedParameter($entry->getClientUid(), IQueryBuilder::PARAM_STR))
+			->set('revision', $qb->createNamedParameter($entry->getRevision(), IQueryBuilder::PARAM_INT))
 			->set('text', $qb->createNamedParameter($entry->getText(), IQueryBuilder::PARAM_STR))
 			->set('type', $qb->createNamedParameter($entry->getType(), IQueryBuilder::PARAM_STR))
 			->set('important', $qb->createNamedParameter($entry->isImportant(), IQueryBuilder::PARAM_BOOL))

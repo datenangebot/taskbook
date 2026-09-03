@@ -135,6 +135,7 @@ watch(() => props.open, (open) => {
 
 <template>
 	<TaskbookModal v-if="open"
+		data-taskbook-editor-active="true"
 		:name="t('taskbook', 'New entry')"
 		size="normal"
 		@close="close">
