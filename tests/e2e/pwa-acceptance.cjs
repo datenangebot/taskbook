@@ -36,21 +36,26 @@ async function entriesFromIndexedDb(page) {
 }
 
 async function provision(page, context) {
+	const synced = page.waitForResponse((response) => response.url().endsWith('/api/v1/sync') && response.status() === 200, { timeout: 30_000 })
 	const popupPromise = context.waitForEvent('page')
 	await page.getByRole('button', { name: 'Connect to Nextcloud' }).click()
 	const popup = await popupPromise
 	await popup.waitForLoadState('domcontentloaded')
+	const login = popup.getByText('Log in', { exact: true })
+	const grant = popup.getByRole('button', { name: /grant access/i })
+	await login.or(grant).or(popup.locator('#user')).first().waitFor()
+	if (await login.isVisible()) { await login.click() }
+	await grant.or(popup.locator('#user')).first().waitFor()
 	if (await popup.locator('#user').isVisible().catch(() => false)) {
 		await popup.locator('#user').fill(username)
 		await popup.locator('#password').fill(password)
-		await popup.locator('#submit-form').click()
+		await popup.locator('button[type="submit"], input[type="submit"]').click()
 	}
-	const grant = popup.getByRole('button', { name: /grant access/i })
-	if (await grant.isVisible({ timeout: 10_000 }).catch(() => false)) {
-		await grant.click()
-	}
+	await grant.click({ timeout: 15_000 })
 	await page.getByRole('navigation', { name: 'Taskbook views' }).waitFor({ timeout: 30_000 })
-	await page.locator('.pending').filter({ hasText: /^0 pending$/ }).waitFor({ timeout: 30_000 })
+	await page.locator('.sync-button[aria-label="Synchronization"]').waitFor({ timeout: 30_000 })
+	await synced
+	await page.locator('dialog[open]').waitFor({ state: 'detached' })
 }
 
 async function openEditorFor(page, text) {
@@ -70,7 +75,13 @@ async function main() {
 	const args = baseUrl.startsWith('http://') ? [`--unsafely-treat-insecure-origin-as-secure=${baseUrl}`] : []
 	const browser = await chromium.launch({ headless: true, args })
 	const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 390, height: 844 }, colorScheme: 'light' })
+	context.setDefaultTimeout(15_000)
 	const page = await context.newPage()
+	await page.goto(`${baseUrl}/index.php/login`)
+	await page.locator('#user').fill(username)
+	await page.locator('#password').fill(password)
+	await page.locator('button[type="submit"], input[type="submit"]').click()
+	await page.waitForURL((url) => !url.pathname.endsWith('/login'))
 	await page.goto(`${baseUrl}/index.php/apps/taskbook/pwa/`)
 	await page.getByRole('heading', { name: 'Set up Taskbook' }).waitFor()
 	await provision(page, context)
@@ -83,7 +94,7 @@ async function main() {
 	await dialog.getByRole('button', { name: 'Save' }).click()
 	await page.locator('.entry-row').filter({ hasText: 'Offline edited' }).getByRole('button', { name: 'Complete' }).click()
 	await addEntry(page, 'm #n - Future offline ')
-	assert.match(await page.locator('.pending').innerText(), /^[1-9]\d* pending$/)
+	assert.match(await page.locator('.sync-button').innerText(), /\([1-9]\d*\)$/)
 	await page.reload()
 	await page.getByRole('navigation', { name: 'Taskbook views' }).waitFor()
 	await page.getByText('Offline edited').waitFor()
@@ -91,7 +102,7 @@ async function main() {
 	await page.getByText('Future offline').waitFor()
 
 	await context.setOffline(false)
-	await page.locator('.pending').filter({ hasText: /^0 pending$/ }).waitFor({ timeout: 30_000 })
+	await page.locator('.sync-button[aria-label="Synchronization"]').waitFor({ timeout: 30_000 })
 	let entries = await entriesFromIndexedDb(page)
 	const edited = entries.find((entry) => entry.text === 'Offline edited')
 	const future = entries.find((entry) => entry.text === 'Future offline')
@@ -128,7 +139,7 @@ async function main() {
 	await context.setOffline(false)
 	await page.getByText('This item changed on another device.').waitFor({ timeout: 30_000 })
 	await page.getByRole('button', { name: 'Keep mine' }).click()
-	await page.locator('.pending').filter({ hasText: /^0 pending$/ }).waitFor({ timeout: 30_000 })
+	await page.locator('.sync-button[aria-label="Synchronization"]').waitFor({ timeout: 30_000 })
 	await page.getByText('Mine two').waitFor()
 
 	const contextId = (await entriesFromIndexedDb(page))[0].contextId
@@ -145,19 +156,23 @@ async function main() {
 	await futureRow.getByRole('button', { name: 'Delete' }).click()
 	await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
 	await context.setOffline(false)
-	await page.locator('.pending').filter({ hasText: /^0 pending$/ }).waitFor({ timeout: 30_000 })
+	await page.locator('.sync-button[aria-label="Synchronization"]').waitFor({ timeout: 30_000 })
 	assert.equal((await ocs('GET', `/ocs/v2.php/apps/taskbook/api/v1/entries/${future.id}`)).status, 404)
 
 	await context.setOffline(true)
 	const mineTwo = (await entriesFromIndexedDb(page)).find((entry) => entry.text === 'Mine two')
 	await ocs('DELETE', `/ocs/v2.php/apps/taskbook/api/v1/entries/${mineTwo.id}`)
 	await context.setOffline(false)
-	await page.getByRole('button', { name: 'Sync now' }).click()
+	await page.getByRole('button', { name: 'Synchronization' }).click()
 	await page.getByRole('button', { name: 'Day' }).click()
 	await page.getByText('Mine two').waitFor({ state: 'detached', timeout: 30_000 })
 
 	await page.setViewportSize({ width: 1280, height: 800 })
 	await page.emulateMedia({ colorScheme: 'dark' })
+	assert.equal(await page.locator('footer.footer').count(), 0)
+	assert.equal(await page.getByRole('button', { name: /^Overdue \(\d+\)$/ }).count(), 1)
+	assert.equal(await page.locator('.main').evaluate((element) => getComputedStyle(element).overflowY), 'auto')
+	assert.notEqual(await page.locator('.app-icon').evaluate((element) => getComputedStyle(element).filter), 'none')
 	await page.keyboard.press('Shift+N')
 	await page.getByRole('dialog').waitFor()
 	await page.keyboard.press('Escape')
@@ -169,6 +184,6 @@ async function main() {
 }
 
 main().catch((error) => {
-	console.error(error instanceof Error ? error.message : String(error))
-	process.exitCode = 1
+	console.error(error instanceof Error ? (error.stack ?? error.message) : String(error))
+	process.exit(1)
 })

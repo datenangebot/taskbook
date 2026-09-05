@@ -23,6 +23,7 @@ class ViewService {
 		private ContextService $contextService,
 		private EntryService $entryService,
 		private PeriodService $periodService,
+		private OverdueService $overdueService,
 	) {
 	}
 
@@ -30,7 +31,7 @@ class ViewService {
 	public function overview(string $uid): array {
 		$today = $this->periodService->today();
 		$entries = $this->entries($uid);
-		$overdue = $this->sort($this->overdueEntries($entries, $today));
+		$overdue = $this->sort($this->overdueService->filter($entries, $today));
 		return [
 			'overdue' => $this->responses($uid, $overdue),
 			'statistics' => [
@@ -146,27 +147,6 @@ class ViewService {
 			$contexts[$contextId] ??= $this->contextService->find($uid, $contextId);
 		}
 		return array_map(fn (Entry $entry): array => $this->entryService->toResponse($entry, $contexts[$entry->getContextId()]), $entries);
-	}
-
-	/**
-	 * @param list<Entry> $entries
-	 * @return list<Entry>
-	 */
-	private function overdueEntries(array $entries, DateTimeImmutable $today): array {
-		$currentWeek = $this->periodService->weekStart($today);
-		$currentMonth = $this->periodService->monthStart($today);
-		return $this->filter($entries, function (Entry $entry) use ($today, $currentWeek, $currentMonth): bool {
-			if ($entry->getStatus() !== 'open' || !in_array($entry->getType(), ['task', 'migrated_task'], true)) {
-				return false;
-			}
-			$target = $this->entryService->effectiveTargetDate($entry);
-			return match ($entry->getReferenceType()) {
-				'day' => $target !== null && $target < $today,
-				'week' => $target !== null && $target < $currentWeek,
-				'month' => $target !== null && $target < $currentMonth,
-				default => false,
-			};
-		});
 	}
 
 	private function dayParameter(mixed $date): DateTimeImmutable {

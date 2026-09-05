@@ -67,4 +67,7 @@ export interface Overview {
 export interface Settings {
 	defaultContextId: number
 	contexts: Context[]
+	overdueReminderEnabled: boolean
+	overdueReminderTime: string
+	overdueReminderDays: number[]
 }

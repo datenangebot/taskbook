@@ -51,6 +51,11 @@ export async function setDefaultContext(contextId: number): Promise<Settings> {
 	return response.data.ocs.data
 }
 
+export async function setOverdueReminders(overdueReminderEnabled: boolean, overdueReminderTime: string, overdueReminderDays: number[]): Promise<Settings> {
+	const response = await axios.put<OcsResponse<Settings>>(generateOcsUrl(`${root}/settings/overdue-reminders`), { overdueReminderEnabled, overdueReminderTime, overdueReminderDays }, { headers })
+	return response.data.ocs.data
+}
+
 export async function createEntry(request: EntryRequest): Promise<Entry> {
 	const response = await axios.post<OcsResponse<Entry>>(generateOcsUrl(`${root}/entries`), request, { headers })
 	return response.data.ocs.data

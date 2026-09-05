@@ -1,68 +1,72 @@
 <script setup lang="ts">
 import type { Overview } from '../types.ts'
 
-import { t } from '@nextcloud/l10n'
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { n, t } from '@nextcloud/l10n'
+import { computed, inject, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import EntrySection from '../components/EntrySection.vue'
 import StatsCard from '../components/StatsCard.vue'
-import { deleteEntry, getOverview } from '../api.ts'
+import { deleteEntry } from '../api.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
-import { contextsFrom, entryChangeKey, settingsKey } from '../state.ts'
+import { contextsFrom, overviewKey, overviewLoadingKey, recordEntryChangeKey, settingsKey } from '../state.ts'
 import { isoWeekKey, localDateKey } from '../utils/dates.ts'
+import { overdueNoticeCount, overviewQuickLinks, overviewStatisticCards } from '../utils/overviewPresentation.ts'
 
 const router = useRouter()
-const data = ref<Overview | null>(null)
-const loading = ref(true)
+const data = inject(overviewKey) ?? ref<Overview | null>(null)
+const loading = inject(overviewLoadingKey) ?? ref(true)
 const settings = inject(settingsKey)
-const entryChange = inject(entryChangeKey)
+const recordEntryChange = inject(recordEntryChangeKey)
 const contexts = computed(() => contextsFrom(settings?.value ?? null))
-const statisticCards = computed(() => data.value === null
-	? []
-	: [
-			{ label: t('taskbook', 'Open items'), value: data.value.statistics.openItems },
-			{ label: t('taskbook', 'Total items completed'), value: data.value.statistics.totalItemsCompleted },
-			{ label: t('taskbook', 'Overdue items'), value: data.value.statistics.overdueItems },
-			{ label: t('taskbook', 'Later items'), value: data.value.statistics.laterItems },
-			{ label: t('taskbook', 'Migrated items'), value: data.value.statistics.migratedItems },
-		])
-
-async function load() {
-	loading.value = true
-	try {
-		data.value = await getOverview()
-	} catch {
-		notifyError(t('taskbook', 'Overview could not be loaded.'))
-	} finally {
-		loading.value = false
-	}
+const statisticLabels = {
+	openItems: t('taskbook', 'Open items'),
+	totalItemsCompleted: t('taskbook', 'Total completed'),
+	overdueItems: t('taskbook', 'Overdue items'),
+	laterItems: t('taskbook', 'Later items'),
+	migratedItems: t('taskbook', 'Migrated items'),
 }
+const statisticCards = computed(() => overviewStatisticCards(data.value, statisticLabels))
+const overdueCount = computed(() => overdueNoticeCount(data.value))
+const overdueNotice = computed(() => overdueCount.value === null
+	? null
+	: n(
+			'taskbook',
+			'You have {count} overdue item. Review and migrate it to keep your plans up to date.',
+			'You have {count} overdue items. Review and migrate them to keep your plans up to date.',
+			overdueCount.value,
+			{ count: overdueCount.value },
+		))
+const quickLinks = overviewQuickLinks({
+	day: t('taskbook', 'Today'),
+	week: t('taskbook', 'Week'),
+	month: t('taskbook', 'Month'),
+	future: t('taskbook', 'Future Log'),
+})
 
-function navigate(period: 'day' | 'week' | 'month') {
+function navigate(period: 'day' | 'week' | 'month' | 'future') {
 	const today = localDateKey()
-	void router.push(period === 'day'
-		? { name: 'day', params: { date: today } }
-		: period === 'week'
-			? { name: 'week', params: { week: isoWeekKey(today) } }
-			: { name: 'month', params: { month: today.slice(0, 7) } })
+	void router.push(period === 'future'
+		? { name: 'future' }
+		: period === 'day'
+			? { name: 'day', params: { date: today } }
+			: period === 'week'
+				? { name: 'week', params: { week: isoWeekKey(today) } }
+				: { name: 'month', params: { month: today.slice(0, 7) } })
 }
 
 async function remove(id: number) {
 	try {
 		await deleteEntry(id)
-		if (data.value !== null) {
-			data.value.overdue = data.value.overdue.filter((entry) => entry.id !== id)
-		}
+		recordEntryChange?.({ deletedId: id })
 		notifySuccess(t('taskbook', 'Entry deleted.'))
 	} catch {
 		notifyError(t('taskbook', 'Entry could not be deleted.'))
 	}
 }
 
-watch(entryChange ?? ref(null), (change) => { if (change !== null) { void load() } })
-onMounted(load)
 </script>
 
 <template>
@@ -72,14 +76,17 @@ onMounted(load)
 				{{ t('taskbook', 'Overview') }}
 			</h1>
 		</header>
+		<NcNoteCard v-if="overdueNotice !== null" type="info" :text="overdueNotice" />
 		<NcLoadingIcon v-if="loading" :name="t('taskbook', 'Loading overview')" :size="32" />
 		<template v-else-if="data !== null">
 			<section class="taskbook-entry-section" :class="$style.quickLinks">
 				<h2>{{ t('taskbook', 'Quick links') }}</h2>
 				<nav :class="$style.periodLinks" :aria-label="t('taskbook', 'Current period views')">
-					<NcButton :text="t('taskbook', 'Today')" variant="primary" @click="navigate('day')" />
-					<NcButton :text="t('taskbook', 'Week')" variant="secondary" @click="navigate('week')" />
-					<NcButton :text="t('taskbook', 'Month')" variant="secondary" @click="navigate('month')" />
+					<NcButton v-for="link in quickLinks"
+						:key="link.period"
+						:text="link.label"
+						:variant="link.variant"
+						@click="navigate(link.period)" />
 				</nav>
 			</section>
 			<section class="taskbook-entry-section" :class="$style.stats">
@@ -96,8 +103,7 @@ onMounted(load)
 				:section="{ id: 'overdue', kind: 'Overdue', entries: data.overdue }"
 				:title="t('taskbook', 'Overdue')"
 				show-target-period
-				@deleted="remove"
-				@updated="load" />
+				@deleted="remove" />
 		</template>
 	</div>
 </template>

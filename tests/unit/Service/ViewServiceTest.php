@@ -12,6 +12,7 @@ use OCA\Taskbook\Db\EntryMapper;
 use OCA\Taskbook\Service\Clock;
 use OCA\Taskbook\Service\ContextService;
 use OCA\Taskbook\Service\EntryService;
+use OCA\Taskbook\Service\OverdueService;
 use OCA\Taskbook\Service\PeriodService;
 use OCA\Taskbook\Service\SyncChangeService;
 use OCA\Taskbook\Service\ViewService;
@@ -50,6 +51,16 @@ final class ViewServiceTest extends TestCase {
 			'createdAt' => '2026-08-01T09:00:00Z',
 			'updatedAt' => '2026-08-01T09:00:00Z',
 		]);
+	}
+
+	public function testOverdueComparesCalendarDatesAcrossDatabaseAndUserTimezones(): void {
+		$service = new OverdueService($this->entryMapper, $this->entryService, $this->periodService);
+		$today = new DateTimeImmutable('2026-09-07', new DateTimeZone('America/Los_Angeles'));
+		foreach (['day' => '2026-09-07', 'week' => '2026-09-07', 'month' => '2026-09-01'] as $reference => $date) {
+			$entry = $this->entry(1, $reference, $date);
+			$entry->setPrimaryTargetDate(new DateTimeImmutable($date, new DateTimeZone('UTC')));
+			self::assertFalse($service->isOverdue($entry, $today));
+		}
 	}
 
 	public function testWeekReadModelIncludesDirectDaysAndApplicableBroaderPeriods(): void {
@@ -138,8 +149,34 @@ final class ViewServiceTest extends TestCase {
 		$this->assertArrayNotHasKey('today', $response);
 	}
 
+	public function testOverviewOverdueRuleUsesOpenTaskTypesAndWholeCalendarPeriods(): void {
+		$previousWeek = $this->entry(1, 'week', '2026-08-17');
+		$currentWeek = $this->entry(2, 'week', '2026-08-24');
+		$previousMonth = $this->entry(3, 'month', '2026-07-01');
+		$currentMonth = $this->entry(4, 'month', '2026-08-01');
+		$appointment = $this->entry(5, 'day', '2026-08-01');
+		$appointment->setType('appointment');
+		$completed = $this->entry(6, 'day', '2026-08-01');
+		$completed->setStatus('completed');
+		$completed->setCompletedAt($this->timestamp());
+		$irrelevant = $this->entry(7, 'day', '2026-08-01');
+		$irrelevant->setType('irrelevant_task');
+		$this->entryMapper->method('findAllForUser')->willReturn([$previousWeek, $currentWeek, $previousMonth, $currentMonth, $appointment, $completed, $irrelevant]);
+
+		$response = $this->service()->overview('alice');
+
+		$this->assertSame([1, 3], array_column($response['overdue'], 'id'));
+		$this->assertSame(2, $response['statistics']['overdueItems']);
+	}
+
 	private function service(): ViewService {
-		return new ViewService($this->entryMapper, $this->contextService, $this->entryService, $this->periodService);
+		return new ViewService(
+			$this->entryMapper,
+			$this->contextService,
+			$this->entryService,
+			$this->periodService,
+			new OverdueService($this->entryMapper, $this->entryService, $this->periodService),
+		);
 	}
 
 	private function entry(int $id, string $referenceType, string $target, ?string $secondaryTarget = null): Entry {

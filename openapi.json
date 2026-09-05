@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "taskbook",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "description": "Taskbook is a Nextcloud app for managing tasks, plans, and notes in one simple daily workspace.",
         "license": {
             "name": "AGPL-3.0-or-later"
@@ -273,7 +273,10 @@
                 "type": "object",
                 "required": [
                     "defaultContextId",
-                    "contexts"
+                    "contexts",
+                    "overdueReminderEnabled",
+                    "overdueReminderTime",
+                    "overdueReminderDays"
                 ],
                 "properties": {
                     "defaultContextId": {
@@ -284,6 +287,19 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Context"
+                        }
+                    },
+                    "overdueReminderEnabled": {
+                        "type": "boolean"
+                    },
+                    "overdueReminderTime": {
+                        "type": "string"
+                    },
+                    "overdueReminderDays": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 }
@@ -1956,6 +1972,156 @@
                     },
                     "404": {
                         "description": "Context not found.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/taskbook/api/v1/settings/overdue-reminders": {
+            "put": {
+                "operationId": "settings-set-overdue-reminders",
+                "summary": "Update the authenticated user's overdue reminder preferences.",
+                "tags": [
+                    "settings"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "overdueReminderEnabled",
+                                    "overdueReminderTime",
+                                    "overdueReminderDays"
+                                ],
+                                "properties": {
+                                    "overdueReminderEnabled": {
+                                        "type": "boolean",
+                                        "description": "Whether overdue reminders are enabled."
+                                    },
+                                    "overdueReminderTime": {
+                                        "type": "string",
+                                        "description": "Local reminder time in HH:MM format."
+                                    },
+                                    "overdueReminderDays": {
+                                        "type": "array",
+                                        "description": "Selected ISO weekday numbers.",
+                                        "items": {
+                                            "type": "integer",
+                                            "format": "int64"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reminder settings updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Settings"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid reminder preferences.",
                         "content": {
                             "application/json": {
                                 "schema": {

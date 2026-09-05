@@ -11,7 +11,7 @@ Tasks, ideas, notes, and plans can be recorded quickly without interrupting your
 Quick entry, keyboard shortcuts, dashboard integration, and a clean chronological view make everyday organization fast and unobtrusive.
 
 Taskbook is an independent application and is not affiliated with or endorsed by Bullet Journal or Lightcage LLC.</description>
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="mail@datenangebot.de" homepage="https://github.com/datenangebot">Florian Steffens</author>
 	<namespace>Taskbook</namespace>
@@ -26,6 +26,9 @@ Taskbook is an independent application and is not affiliated with or endorsed by
 		<php min-version="8.2" max-version="8.5"/>
 		<nextcloud min-version="33" max-version="35"/>
 	</dependencies>
+	<background-jobs>
+		<job>OCA\Taskbook\BackgroundJob\OverdueReminderJob</job>
+	</background-jobs>
 	<navigations>
 		<navigation>
 			<id>taskbook</id>

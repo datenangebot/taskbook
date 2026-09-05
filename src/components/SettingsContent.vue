@@ -6,11 +6,12 @@ import { generateUrl } from '@nextcloud/router'
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import NcAppSettingsSection from '@nextcloud/vue/components/NcAppSettingsSection'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcEmojiPicker from '@nextcloud/vue/components/NcEmojiPicker'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import ContextIcon from './ContextIcon.vue'
 import TaskbookModal from './TaskbookModal.vue'
-import { createContext, deleteContext, ocsErrorMessage, setDefaultContext, updateContext } from '../api.ts'
+import { createContext, deleteContext, ocsErrorMessage, setDefaultContext, setOverdueReminders, updateContext } from '../api.ts'
 import { iconPaths } from '../icons.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
 import { settingsKey } from '../state.ts'
@@ -21,6 +22,10 @@ const settings = inject(settingsKey)
 const deleteCandidate = ref<Context | null>(null)
 const saving = ref(false)
 const defaultBusy = ref(false)
+const reminderSaving = ref(false)
+const reminderEnabled = ref(true)
+const reminderTime = ref('08:00')
+const reminderDays = ref<number[]>([1, 2, 3, 4, 5, 6, 7])
 const titleInput = ref<HTMLInputElement>()
 const editor = ref<{ id: number | null, title: string, icon: ContextIconValue, alias: string, shortcutTouched: boolean, isDefault: boolean } | null>(null)
 const serverAliasError = ref<string | null>(null)
@@ -39,6 +44,16 @@ const aliasError = computed(() => {
 	return t('taskbook', 'Use 1 to 16 letters, numbers, hyphens, or underscores.')
 })
 const editorInvalid = computed(() => editor.value === null || editor.value.title.trim() === '' || aliasValidation.value?.valid !== true)
+const weekdays = computed(() => [
+	{ value: 1, label: t('taskbook', 'Monday') },
+	{ value: 2, label: t('taskbook', 'Tuesday') },
+	{ value: 3, label: t('taskbook', 'Wednesday') },
+	{ value: 4, label: t('taskbook', 'Thursday') },
+	{ value: 5, label: t('taskbook', 'Friday') },
+	{ value: 6, label: t('taskbook', 'Saturday') },
+	{ value: 7, label: t('taskbook', 'Sunday') },
+])
+const reminderInvalid = computed(() => reminderDays.value.length === 0 || !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(reminderTime.value))
 
 function focusTitle() { void nextTick(() => titleInput.value?.focus()) }
 function openNew() { if (editor.value === null) { serverAliasError.value = null; editor.value = { id: null, title: '', icon: '🗂️', alias: '', shortcutTouched: false, isDefault: false }; focusTitle() } }
@@ -65,6 +80,20 @@ function aliasErrorId(id: number | null): string { return `taskbook-context-shor
 function openPwa(reset = false) {
 	const url = generateUrl('/apps/taskbook/pwa/') + (reset ? '?disconnect=1' : '')
 	window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+async function saveReminders() {
+	if (reminderSaving.value || reminderInvalid.value) { return }
+	reminderSaving.value = true
+	try {
+		const next = await setOverdueReminders(reminderEnabled.value, reminderTime.value, reminderDays.value)
+		emit('changed', next)
+		notifySuccess(t('taskbook', 'Overdue reminder settings updated.'))
+	} catch {
+		notifyError(t('taskbook', 'Overdue reminder settings could not be updated.'))
+	} finally {
+		reminderSaving.value = false
+	}
 }
 
 async function saveContext() {
@@ -120,9 +149,47 @@ watch(() => editor.value?.title, (title) => {
 		serverAliasError.value = null
 	}
 })
+watch(() => settings?.value, (value) => {
+	if (value === null || value === undefined) { return }
+	reminderEnabled.value = value.overdueReminderEnabled
+	reminderTime.value = value.overdueReminderTime
+	reminderDays.value = [...value.overdueReminderDays]
+}, { immediate: true })
 </script>
 
 <template>
+	<NcAppSettingsSection id="overdue-reminders"
+		:description="t('taskbook', 'Receive one reminder on selected days when overdue items need attention.')"
+		:name="t('taskbook', 'Overdue reminders')"
+		:order="5">
+		<div :class="$style.reminders">
+			<NcCheckboxRadioSwitch v-model="reminderEnabled" type="switch">
+				{{ t('taskbook', 'Remind me about overdue items') }}
+			</NcCheckboxRadioSwitch>
+			<label :class="$style.timeField">
+				<span>{{ t('taskbook', 'Reminder time') }}</span>
+				<input v-model="reminderTime" :disabled="!reminderEnabled" type="time">
+			</label>
+			<fieldset :class="$style.weekdays" :disabled="!reminderEnabled">
+				<legend>{{ t('taskbook', 'Reminder days') }}</legend>
+				<div :class="$style.weekdayControls">
+					<NcCheckboxRadioSwitch v-for="day in weekdays"
+						:key="day.value"
+						v-model="reminderDays"
+						:value="day.value">
+						{{ day.label }}
+					</NcCheckboxRadioSwitch>
+				</div>
+			</fieldset>
+			<p v-if="reminderDays.length === 0" :class="$style.reminderError" role="alert">
+				{{ t('taskbook', 'Select at least one reminder day.') }}
+			</p>
+			<NcButton :disabled="reminderSaving || reminderInvalid"
+				:text="t('taskbook', 'Save reminder settings')"
+				variant="primary"
+				@click="saveReminders" />
+		</div>
+	</NcAppSettingsSection>
 	<NcAppSettingsSection id="contexts"
 		:description="t('taskbook', 'Contexts keep every entry organised without exposing them to other users.')"
 		:name="t('taskbook', 'Contexts')"
@@ -370,6 +437,20 @@ watch(() => editor.value?.title, (title) => {
 </template>
 
 <style module>
+.reminders { display:flex; flex-direction:column; align-items:flex-start; gap:12px; padding-inline:16px; }
+
+.timeField { display:flex; flex-direction:column; gap:4px; font-weight:var(--font-weight-bold); }
+
+.timeField input { min-height:var(--default-clickable-area); border:1px solid var(--color-border-maxcontrast); border-radius:var(--border-radius-element); background:var(--color-main-background); color:var(--color-main-text); padding-inline:8px; font:inherit; }
+
+.weekdays { min-width:0; margin:0; border:0; padding:0; }
+
+.weekdays legend { margin-bottom:4px; font-weight:var(--font-weight-bold); }
+
+.weekdayControls { display:flex; flex-wrap:wrap; gap:4px 12px; }
+
+.reminderError { margin:0; color:var(--color-error-text); }
+
 .content { display:flex; flex-direction:column; gap:8px; padding-inline:16px; }
 
 .header, .row { display:grid; grid-template-columns:minmax(2.75rem, auto) minmax(12rem, 1fr) minmax(9rem, .7fr) minmax(9.5rem, max-content) auto; align-items:center; gap:8px; min-height:var(--default-clickable-area); }
