@@ -7,7 +7,6 @@ namespace OCA\Taskbook\Service;
 use OCA\Taskbook\AppInfo\Application;
 use OCA\Taskbook\Exception\ValidationException;
 use OCA\Taskbook\ResponseDefinitions;
-use OCP\IConfig;
 
 /** @psalm-import-type TaskbookSettings from ResponseDefinitions */
 class SettingsService {
@@ -22,7 +21,7 @@ class SettingsService {
 	/** @psalm-suppress PossiblyUnusedMethod Instantiated by Nextcloud dependency injection. */
 	public function __construct(
 		private ContextService $contextService,
-		private IConfig $config,
+		private UserConfigService $userConfig,
 	) {
 	}
 
@@ -49,23 +48,23 @@ class SettingsService {
 		}
 		$validatedTime = $this->validateTime($time);
 		$validatedDays = $this->validateDays($days);
-		$this->config->setUserValue($uid, Application::APP_ID, self::REMINDER_ENABLED_KEY, $enabled ? '1' : '0');
-		$this->config->setUserValue($uid, Application::APP_ID, self::REMINDER_TIME_KEY, $validatedTime);
-		$this->config->setUserValue($uid, Application::APP_ID, self::REMINDER_DAYS_KEY, implode(',', $validatedDays));
+		$this->userConfig->setBool($uid, Application::APP_ID, self::REMINDER_ENABLED_KEY, $enabled);
+		$this->userConfig->setString($uid, Application::APP_ID, self::REMINDER_TIME_KEY, $validatedTime);
+		$this->userConfig->setDays($uid, Application::APP_ID, self::REMINDER_DAYS_KEY, $validatedDays);
 		return $this->get($uid);
 	}
 
 	/** @return array{overdueReminderEnabled: bool, overdueReminderTime: string, overdueReminderDays: list<int>} */
 	public function reminderSettings(string $uid): array {
 		return [
-			'overdueReminderEnabled' => $this->config->getUserValue($uid, Application::APP_ID, self::REMINDER_ENABLED_KEY, '1') === '1',
+			'overdueReminderEnabled' => $this->userConfig->getBool($uid, Application::APP_ID, self::REMINDER_ENABLED_KEY, true),
 			'overdueReminderTime' => $this->storedTime($uid),
 			'overdueReminderDays' => $this->storedDays($uid),
 		];
 	}
 
 	public function lastReminderLocalDate(string $uid): ?string {
-		$value = $this->config->getUserValue($uid, Application::APP_ID, self::LAST_REMINDER_DATE_KEY, '');
+		$value = $this->userConfig->getString($uid, Application::APP_ID, self::LAST_REMINDER_DATE_KEY, '');
 		return preg_match('/^\d{4}-\d{2}-\d{2}$/D', $value) === 1 ? $value : null;
 	}
 
@@ -73,11 +72,11 @@ class SettingsService {
 		if (preg_match('/^\d{4}-\d{2}-\d{2}$/D', $localDate) !== 1) {
 			throw new \InvalidArgumentException('Invalid local reminder date.');
 		}
-		$this->config->setUserValue($uid, Application::APP_ID, self::LAST_REMINDER_DATE_KEY, $localDate);
+		$this->userConfig->setString($uid, Application::APP_ID, self::LAST_REMINDER_DATE_KEY, $localDate);
 	}
 
 	private function storedTime(string $uid): string {
-		$value = $this->config->getUserValue($uid, Application::APP_ID, self::REMINDER_TIME_KEY, self::DEFAULT_TIME);
+		$value = $this->userConfig->getString($uid, Application::APP_ID, self::REMINDER_TIME_KEY, self::DEFAULT_TIME);
 		try {
 			return $this->validateTime($value);
 		} catch (ValidationException) {
@@ -87,9 +86,9 @@ class SettingsService {
 
 	/** @return list<int> */
 	private function storedDays(string $uid): array {
-		$value = $this->config->getUserValue($uid, Application::APP_ID, self::REMINDER_DAYS_KEY, implode(',', self::DEFAULT_DAYS));
+		$value = $this->userConfig->getDays($uid, Application::APP_ID, self::REMINDER_DAYS_KEY, self::DEFAULT_DAYS);
 		try {
-			return $this->validateDays(array_map(static fn (string $day): int => (int)$day, explode(',', $value)));
+			return $this->validateDays($value);
 		} catch (ValidationException) {
 			return self::DEFAULT_DAYS;
 		}

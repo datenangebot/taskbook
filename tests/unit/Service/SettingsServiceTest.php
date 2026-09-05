@@ -8,7 +8,7 @@ use OCA\Taskbook\AppInfo\Application;
 use OCA\Taskbook\Exception\ValidationException;
 use OCA\Taskbook\Service\ContextService;
 use OCA\Taskbook\Service\SettingsService;
-use OCP\IConfig;
+use OCA\Taskbook\Service\UserConfigService;
 use PHPUnit\Framework\TestCase;
 
 final class SettingsServiceTest extends TestCase {
@@ -35,9 +35,9 @@ final class SettingsServiceTest extends TestCase {
 		self::assertSame([1, 2, 7], $settings['overdueReminderDays']);
 		self::assertSame('1', $service->reminderSettings('bob')['overdueReminderEnabled'] ? '1' : '0');
 		self::assertSame([
-			'overdue_reminder_enabled' => '0',
+			'overdue_reminder_enabled' => false,
 			'overdue_reminder_time' => '17:45',
-			'overdue_reminder_days' => '1,2,7',
+			'overdue_reminder_days' => [1, 2, 7],
 		], $values['alice']);
 		self::assertArrayNotHasKey('bob', $values);
 	}
@@ -67,15 +67,27 @@ final class SettingsServiceTest extends TestCase {
 	}
 
 	/** @param array<string, array<string, string>> $values */
-	private function config(?array &$values = null): IConfig {
+	private function config(?array &$values = null): UserConfigService {
 		$values ??= [];
-		$config = $this->createMock(IConfig::class);
-		$config->method('getUserValue')->willReturnCallback(static function (string $uid, string $app, string $key, string $default = '') use (&$values): string {
+		$config = $this->createMock(UserConfigService::class);
+		$config->method('getString')->willReturnCallback(static function (string $uid, string $app, string $key, string $default = '') use (&$values): string {
 			self::assertSame(Application::APP_ID, $app);
 			return $values[$uid][$key] ?? $default;
 		});
-		$config->method('setUserValue')->willReturnCallback(static function (string $uid, string $app, string $key, string $value) use (&$values): void {
+		$config->method('setString')->willReturnCallback(static function (string $uid, string $app, string $key, string $value) use (&$values): void {
 			self::assertSame(Application::APP_ID, $app);
+			$values[$uid][$key] = $value;
+		});
+		$config->method('getBool')->willReturnCallback(static function (string $uid, string $app, string $key, bool $default) use (&$values): bool {
+			return ($values[$uid][$key] ?? $default) === false ? false : (bool)($values[$uid][$key] ?? $default);
+		});
+		$config->method('setBool')->willReturnCallback(static function (string $uid, string $app, string $key, bool $value) use (&$values): void {
+			$values[$uid][$key] = $value;
+		});
+		$config->method('getDays')->willReturnCallback(static function (string $uid, string $app, string $key, array $default) use (&$values): array {
+			return $values[$uid][$key] ?? $default;
+		});
+		$config->method('setDays')->willReturnCallback(static function (string $uid, string $app, string $key, array $value) use (&$values): void {
 			$values[$uid][$key] = $value;
 		});
 		return $config;

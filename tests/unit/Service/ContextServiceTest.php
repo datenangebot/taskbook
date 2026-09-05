@@ -12,8 +12,8 @@ use OCA\Taskbook\Exception\ContextNotFoundException;
 use OCA\Taskbook\Exception\ValidationException;
 use OCA\Taskbook\Service\Clock;
 use OCA\Taskbook\Service\ContextService;
+use OCA\Taskbook\Service\UserConfigService;
 use OCP\AppFramework\Db\DoesNotExistException;
-use OCP\IConfig;
 use PHPUnit\Framework\TestCase;
 
 final class ContextServiceTest extends TestCase {
@@ -94,7 +94,7 @@ final class ContextServiceTest extends TestCase {
 		return new ContextService(
 			$mapper,
 			$this->createMock(EntryMapper::class),
-			$this->createMock(IConfig::class),
+			$this->createMock(UserConfigService::class),
 			$clock,
 		);
 	}
