@@ -27,7 +27,7 @@
 	"vue-router": "^5.1.0"
   },
   "devDependencies": {
-	"@typescript-eslint/eslint-plugin": "^8.67.0",
+	"@typescript-eslint/eslint-plugin": "^8.69.0",
 	"@typescript-eslint/parser": "^8.67.0",
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/eslint-config": "^9.0.1",
