@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OCA\Taskbook\AppInfo;
 
 use OCA\Taskbook\Dashboard\TaskbookDashboardWidget;
+use OCA\Taskbook\Notification\Notifier;
+use OCA\Taskbook\Search\EntrySearchProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -20,6 +22,8 @@ class Application extends App implements IBootstrap {
 
 	public function register(IRegistrationContext $context): void {
 		$context->registerDashboardWidget(TaskbookDashboardWidget::class);
+		$context->registerNotifierService(Notifier::class);
+		$context->registerSearchProvider(EntrySearchProvider::class);
 	}
 
 	public function boot(IBootContext $context): void {

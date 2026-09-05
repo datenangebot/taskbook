@@ -51,6 +51,48 @@ class EntryMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/** @return list<Entry> */
+	public function searchByTextForUser(string $uid, string $term, int $limit, int $offset): array {
+		$qb = $this->db->getQueryBuilder();
+		$pattern = '%' . $this->db->escapeLikeParameter($term) . '%';
+		$qb->select('*')->from($this->tableName)
+			->where($qb->expr()->eq('uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->iLike('text', $qb->createNamedParameter($pattern, IQueryBuilder::PARAM_STR)))
+			->orderBy('updated_at', 'DESC')->addOrderBy('id', 'DESC')
+			->setMaxResults($limit)->setFirstResult($offset);
+		return $this->findEntities($qb);
+	}
+
+	/**
+	 * Select only owners with an open, dated task that could be overdue. The
+	 * exact calendar-period rule remains in OverdueService.
+	 *
+	 * @return list<string>
+	 * @psalm-suppress MixedAssignment IResult::fetchAll() does not expose its selected-column type.
+	 */
+	public function findPotentiallyOverdueUserIds(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectDistinct('uid')->from($this->tableName)
+			->where($qb->expr()->eq('status', $qb->createNamedParameter('open', IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->in('type', $qb->createNamedParameter(['task', 'migrated_task'], IQueryBuilder::PARAM_STR_ARRAY)))
+			->andWhere($qb->expr()->in('reference_type', $qb->createNamedParameter(['day', 'week', 'month'], IQueryBuilder::PARAM_STR_ARRAY)))
+			->andWhere($qb->expr()->orX(
+				$qb->expr()->isNotNull('primary_target_date'),
+				$qb->expr()->isNotNull('secondary_target_date'),
+			));
+		$result = $qb->executeQuery();
+		/** @var list<mixed> $rows */
+		$rows = $result->fetchAll(\PDO::FETCH_COLUMN);
+		$userIds = [];
+		foreach ($rows as $uid) {
+			if (is_string($uid) && $uid !== '') {
+				$userIds[] = $uid;
+			}
+		}
+		$result->closeCursor();
+		return $userIds;
+	}
+
 	public function updateForUser(Entry $entry, string $uid): Entry {
 		if ($entry->getUid() !== $uid) {
 			throw new \InvalidArgumentException('Entry ownership does not match the authenticated user.');

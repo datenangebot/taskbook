@@ -18,7 +18,7 @@
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline, 4px) * 3);
 	margin: 0 auto;
-	padding: calc(var(--default-grid-baseline, 4px) * 4);
+	padding: calc(var(--default-clickable-area) + calc(var(--default-grid-baseline, 4px) * 3)) calc(var(--default-grid-baseline, 4px) * 4) calc(var(--default-grid-baseline, 4px) * 4);
 }
 
 .taskbook-page.taskbook-page--wide {
@@ -97,7 +97,7 @@
 
 @media (max-width: 640px) {
 	.taskbook-page {
-		padding: calc(var(--default-grid-baseline, 4px) * 3);
+		padding: calc(var(--default-clickable-area) + calc(var(--default-grid-baseline, 4px) * 3)) calc(var(--default-grid-baseline, 4px) * 3) calc(var(--default-grid-baseline, 4px) * 3);
 	}
 
 	.taskbook-page.taskbook-page--wide {

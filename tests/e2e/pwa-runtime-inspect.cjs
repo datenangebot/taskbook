@@ -73,7 +73,7 @@ async function main() {
 				loadedScripts,
 				scope: registration.scope,
 				workerContentType: workerResponse.headers.get('Content-Type'),
-				buildVersion: document.documentElement.dataset.taskbookPwaBuild,
+				buildVersion: document.querySelector('#taskbook-pwa')?.dataset.taskbookPwaBuild,
 				workerRuntime,
 			}
 		})
@@ -111,6 +111,7 @@ async function main() {
 			['DELETE', '/ocs/v2.php/apps/taskbook/api/v1/entries/1'],
 			['GET', '/ocs/v2.php/apps/taskbook/api/v1/settings'],
 			['PUT', '/ocs/v2.php/apps/taskbook/api/v1/settings/default-context'],
+			['PUT', '/ocs/v2.php/apps/taskbook/api/v1/settings/overdue-reminders'],
 			['GET', '/ocs/v2.php/apps/taskbook/api/v1/views/overview'],
 			['GET', '/ocs/v2.php/apps/taskbook/api/v1/views/day'],
 			['GET', '/ocs/v2.php/apps/taskbook/api/v1/views/week'],
@@ -147,6 +148,6 @@ async function main() {
 }
 
 main().catch((error) => {
-	console.error(error instanceof Error ? error.message : String(error))
+	console.error(error instanceof Error ? (error.stack ?? error.message) : String(error))
 	process.exitCode = 1
 })

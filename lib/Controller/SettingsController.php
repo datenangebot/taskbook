@@ -8,7 +8,7 @@ use OCA\Taskbook\AppInfo\Application;
 use OCA\Taskbook\Exception\ContextNotFoundException;
 use OCA\Taskbook\Exception\ValidationException;
 use OCA\Taskbook\ResponseDefinitions;
-use OCA\Taskbook\Service\ContextService;
+use OCA\Taskbook\Service\SettingsService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -28,7 +28,7 @@ use OCP\IUserSession;
 class SettingsController extends OCSController {
 	public function __construct(
 		IRequest $request,
-		private ContextService $contextService,
+		private SettingsService $settingsService,
 		private IUserSession $userSession,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -45,7 +45,7 @@ class SettingsController extends OCSController {
 	#[OpenAPI]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/settings')]
 	public function get(): DataResponse {
-		return new DataResponse($this->contextService->settings($this->uid()));
+		return new DataResponse($this->settingsService->get($this->uid()));
 	}
 
 	/**
@@ -65,11 +65,39 @@ class SettingsController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/settings/default-context')]
 	public function setDefault(mixed $contextId): DataResponse {
 		try {
-			return new DataResponse($this->contextService->setDefault($this->uid(), $contextId));
+			return new DataResponse($this->settingsService->setDefaultContext($this->uid(), $contextId));
 		} catch (ValidationException $exception) {
 			throw new OCSBadRequestException($exception->getMessage(), $exception);
 		} catch (ContextNotFoundException $exception) {
 			throw new OCSNotFoundException($exception->getMessage(), $exception);
+		}
+	}
+
+	/**
+	 * Update the authenticated user's overdue reminder preferences.
+	 *
+	 * @param bool $overdueReminderEnabled Whether overdue reminders are enabled.
+	 * @param string $overdueReminderTime Local reminder time in HH:MM format.
+	 * @param list<int> $overdueReminderDays Selected ISO weekday numbers.
+	 * @return DataResponse<Http::STATUS_OK, TaskbookSettings, array{}>
+	 * @throws OCSBadRequestException Invalid reminder preferences.
+	 *
+	 * 200: Reminder settings updated
+	 * 400: Invalid reminder settings
+	 */
+	#[NoAdminRequired]
+	#[OpenAPI]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/settings/overdue-reminders')]
+	public function setOverdueReminders(mixed $overdueReminderEnabled, mixed $overdueReminderTime, mixed $overdueReminderDays): DataResponse {
+		try {
+			return new DataResponse($this->settingsService->updateReminders(
+				$this->uid(),
+				$overdueReminderEnabled,
+				$overdueReminderTime,
+				$overdueReminderDays,
+			));
+		} catch (ValidationException $exception) {
+			throw new OCSBadRequestException($exception->getMessage(), $exception);
 		}
 	}
 

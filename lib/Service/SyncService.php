@@ -12,7 +12,6 @@ use OCA\Taskbook\Db\SyncOperation;
 use OCA\Taskbook\Db\SyncOperationMapper;
 use OCA\Taskbook\Exception\EntryNotFoundException;
 use OCA\Taskbook\Exception\ValidationException;
-use OCP\IConfig;
 use OCP\IDBConnection;
 
 /** @psalm-type SyncMutation = array{type: 'create'|'update'|'delete', operationId: string, clientUid: string, baseRevision: int, entry: array<string, mixed>|null} */
@@ -30,7 +29,7 @@ class SyncService {
 		private SyncOperationMapper $operationMapper,
 		private IDBConnection $connection,
 		private Clock $clock,
-		private IConfig $config,
+		private UserConfigService $userConfig,
 	) {
 	}
 
@@ -102,7 +101,7 @@ class SyncService {
 			'hasMore' => $pull['hasMore'],
 			'serverTime' => $this->clock->nowUtc()->format('Y-m-d\TH:i:s\Z'),
 			'timezone' => $this->clock->userTimeZone()->getName(),
-			'locale' => $this->config->getUserValue($uid, 'core', 'lang', 'en'),
+			'locale' => $this->userConfig->getString($uid, 'core', 'lang', 'en'),
 		];
 	}
 

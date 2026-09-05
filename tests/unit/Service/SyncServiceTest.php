@@ -17,7 +17,7 @@ use OCA\Taskbook\Service\Clock;
 use OCA\Taskbook\Service\ContextService;
 use OCA\Taskbook\Service\EntryService;
 use OCA\Taskbook\Service\SyncService;
-use OCP\IConfig;
+use OCA\Taskbook\Service\UserConfigService;
 use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
 
@@ -33,7 +33,7 @@ final class SyncServiceTest extends TestCase {
 	private SyncOperationMapper $operationMapper;
 	private IDBConnection $connection;
 	private Clock $clock;
-	private IConfig $config;
+	private UserConfigService $config;
 
 	protected function setUp(): void {
 		$this->entryMapper = $this->createMock(EntryMapper::class);
@@ -43,10 +43,10 @@ final class SyncServiceTest extends TestCase {
 		$this->operationMapper = $this->createMock(SyncOperationMapper::class);
 		$this->connection = $this->createMock(IDBConnection::class);
 		$this->clock = $this->createMock(Clock::class);
-		$this->config = $this->createMock(IConfig::class);
+		$this->config = $this->createMock(UserConfigService::class);
 		$this->clock->method('nowUtc')->willReturn(new DateTimeImmutable('2026-09-01T08:00:00Z'));
 		$this->clock->method('userTimeZone')->willReturn(new DateTimeZone('Europe/Berlin'));
-		$this->config->method('getUserValue')->willReturn('de');
+		$this->config->method('getString')->willReturn('de');
 		$this->contextService->method('settings')->willReturn(['defaultContextId' => 1, 'contexts' => [$this->contextResponse()]]);
 	}
 

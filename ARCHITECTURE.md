@@ -3,7 +3,8 @@
 Taskbook is a Nextcloud application with its full Vue frontend plus a smaller,
 independently built standalone PWA. The normal frontend remains authoritative
 for the complete product. The PWA intentionally contains only Day, Quick Add,
-full Entry editing, and Future Log.
+full Entry editing, Future Log, and an overdue read model derived from its local
+canonical Entry data.
 
 Backend responsibilities are separated as follows:
 

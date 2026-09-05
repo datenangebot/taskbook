@@ -74,6 +74,7 @@ The PWA is intentionally smaller than the full Nextcloud application and focuses
 
 - Day
 - Future Log
+- Overdue items derived from synchronized local data
 - Quick Add
 - full entry editing
 - offline storage

@@ -1,8 +1,29 @@
 import type { Context, Entry, EntryRequest } from './types.ts'
 
+import { monthStart, weekStart } from './dates.ts'
+
 export interface SyncEntry extends Entry {
 	clientUid: string
 	revision: number
+}
+
+export function isOverdueEntry(entry: Entry, today: string): boolean {
+	if (entry.status !== 'open' || !['task', 'migrated_task'].includes(entry.type) || entry.effectiveTargetDate === null) {
+		return false
+	}
+	return entry.referenceType === 'day'
+		? entry.effectiveTargetDate < today
+		: entry.referenceType === 'week'
+			? entry.effectiveTargetDate < weekStart(today)
+			: entry.referenceType === 'month'
+				? entry.effectiveTargetDate < monthStart(today)
+				: false
+}
+
+export function overdueEntries<T extends Entry>(entries: T[], today: string): T[] {
+	return entries
+		.filter((entry) => isOverdueEntry(entry, today))
+		.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id - right.id)
 }
 
 function sameTarget(entry: SyncEntry, request: EntryRequest): boolean {

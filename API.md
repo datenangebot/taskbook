@@ -6,6 +6,16 @@ password with HTTP Basic authentication, request JSON, and include
 `OCS-APIRequest: true`. Ownership always comes from the authenticated identity;
 no request accepts a user ID for authorization.
 
+## Settings
+
+`GET /settings` returns the authenticated user's Context settings together with
+their overdue reminder preferences. Users without stored reminder preferences
+receive `overdueReminderEnabled: true`, `overdueReminderTime: "08:00"`, and
+`overdueReminderDays: [1,2,3,4,5,6,7]`, where 1 is Monday and 7 is Sunday.
+`PUT /settings/overdue-reminders` updates those three fields after server-side
+validation. The internal once-per-local-day delivery marker is not exposed by
+the API.
+
 ## Offline synchronization
 
 `POST /sync` accepts one bounded batch of at most 100 ordered mutations:

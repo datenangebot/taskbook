@@ -14,7 +14,6 @@ use OCA\Taskbook\ResponseDefinitions;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\DB\Exception as DbException;
-use OCP\IConfig;
 
 /** @psalm-import-type TaskbookContext from ResponseDefinitions */
 class ContextService {
@@ -26,7 +25,7 @@ class ContextService {
 	public function __construct(
 		private ContextMapper $contextMapper,
 		private EntryMapper $entryMapper,
-		private IConfig $config,
+		private UserConfigService $userConfig,
 		private Clock $clock,
 	) {
 	}
@@ -56,7 +55,7 @@ class ContextService {
 			$this->throwAliasConflict($exception);
 		}
 		if ($contexts === []) {
-			$this->config->setUserValue($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$context->getId());
+			$this->userConfig->setString($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$context->getId());
 		}
 
 		return $this->toResponse($context);
@@ -109,7 +108,7 @@ class ContextService {
 	public function setDefault(string $uid, mixed $contextId): array {
 		$id = $this->validateId($contextId, 'context');
 		$this->find($uid, $id);
-		$this->config->setUserValue($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$id);
+		$this->userConfig->setString($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$id);
 
 		return $this->settings($uid);
 	}
@@ -150,7 +149,7 @@ class ContextService {
 
 	/** @param list<Context> $contexts */
 	private function defaultId(string $uid, array $contexts): int {
-		$configured = $this->config->getUserValue($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, '');
+		$configured = $this->userConfig->getString($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, '');
 		if (preg_match('/^[1-9][0-9]*$/D', $configured) === 1) {
 			$id = (int)$configured;
 			foreach ($contexts as $context) {
@@ -160,7 +159,7 @@ class ContextService {
 			}
 		}
 		$id = $contexts[0]->getId();
-		$this->config->setUserValue($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$id);
+		$this->userConfig->setString($uid, Application::APP_ID, self::DEFAULT_CONTEXT_KEY, (string)$id);
 		return $id;
 	}
 

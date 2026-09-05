@@ -18,7 +18,7 @@ namespace OCA\Taskbook;
  *   primaryTargetDate: string|null, secondaryTargetDate: string|null, effectiveTargetDate: string|null,
  *   status: 'open'|'completed', completedAt: string|null, createdAt: string, updatedAt: string
  * }
- * @psalm-type TaskbookSettings = array{defaultContextId: int, contexts: list<TaskbookContext>}
+ * @psalm-type TaskbookSettings = array{defaultContextId: int, contexts: list<TaskbookContext>, overdueReminderEnabled: bool, overdueReminderTime: string, overdueReminderDays: list<int>}
  * @psalm-type TaskbookEntryRequest = array{
  *   text: string, type: 'task'|'appointment'|'note'|'migrated_task'|'irrelevant_task', important: bool,
  *   contextId: int, referenceType: 'day'|'week'|'month'|'none', targetDate: string|null, status: 'open'|'completed'

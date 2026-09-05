@@ -3,8 +3,9 @@ import type { CoordinatorState } from './sync/coordinator.ts'
 import type { PwaBootstrap, SyncConflict, SyncEntry } from './types.ts'
 
 import { addDays, dateForReference, dateKey, displayDate, displayMonth, monthStart } from '../shared/dates.ts'
+import { overdueEntries } from '../shared/entryDomain.ts'
 import { dayEntryGroups } from '../shared/entryGrouping.ts'
-import { isQuickAddShortcut, itemNavigationIndex, itemRowAction, itemShortcutsAllowed, periodNavigationAction } from '../shared/keyboard.ts'
+import { isQuickAddShortcut, itemNavigationIndex, itemRowAction, itemShortcutsAllowed, periodNavigationAction, pwaViewShortcut } from '../shared/keyboard.ts'
 import { parseRapidCapture } from '../shared/rapidLogging.ts'
 import { LoginFlowError, pollLogin, startLogin } from './api/loginFlow.ts'
 import { revokeAppPassword } from './api/transport.ts'
@@ -48,7 +49,7 @@ let account = await getAccount()
 let entries: SyncEntry[] = []
 let contexts: Context[] = []
 let conflicts: SyncConflict[] = []
-let currentView: 'day' | 'future' = 'day'
+let currentView: 'day' | 'future' | 'overdue' = 'day'
 let selectedDate = dateKey(new Date(), account?.timezone)
 let coordinatorState: CoordinatorState = { connection: 'unknown', sync: 'idle', message: '', pending: 0 }
 let installPrompt: InstallPrompt | null = null
@@ -59,6 +60,7 @@ let activeLoginAttempt: AbortController | null = null
 let loginAttemptId = 0
 let setupState: 'idle' | 'authorization-pending' | 'authenticated' | 'credential-persistence-failed' = account === null ? 'idle' : 'authenticated'
 let setupError: string | null = null
+let activeEntryId: string | null = null
 
 function s(key: string, fallback: string): string {
 	return translatePwa(key, fallback, account?.locale ?? navigator.language)
@@ -101,6 +103,8 @@ function showDialog(dialog: HTMLDialogElement, trigger?: HTMLElement): void {
 		activeDialog = null
 		restoreFocus?.focus()
 		restoreFocus = null
+		activeEntryId = null
+		render()
 	}, { once: true })
 	dialog.showModal()
 }
@@ -108,32 +112,45 @@ function showDialog(dialog: HTMLDialogElement, trigger?: HTMLElement): void {
 function render(): void {
 	root.replaceChildren()
 	root.append(renderHeader())
-	const status = element('div', 'pwa-status')
-	status.setAttribute('aria-live', 'polite')
-	status.textContent = coordinatorState.sync === 'syncing' ? s('synchronizing', 'Synchronizing…') : coordinatorState.sync === 'failed' ? coordinatorState.message || s('syncFailed', 'Sync failed — changes remain on this device') : coordinatorState.sync === 'synchronized' ? s('synchronized', 'Synchronized') : ''
-	root.append(status)
 
 	if (account === null) {
 		root.append(renderSetup())
 		return
-	}
-	if (account.authState === 'expired') {
-		const banner = element('section', 'notice notice-error')
-		banner.setAttribute('role', 'alert')
-		banner.append(element('strong', undefined, s('connectionExpired', 'Connection expired')), button(s('reconnect', 'Reconnect'), () => void connect()))
-		root.append(banner)
 	}
 	if (updateRegistration !== null) {
 		const banner = element('section', 'notice')
 		banner.append(element('span', undefined, s('updateAvailable', 'Taskbook update available')), button(s('reload', 'Reload'), activateUpdate))
 		root.append(banner)
 	}
-	root.append(renderConflicts(), renderNavigation())
+	const overdue = overdueEntries(entries, today())
+	root.append(renderConflicts(), renderNavigation(overdue.length))
+	const syncError = renderSyncError()
+	if (syncError !== null) { root.append(syncError) }
 	const main = element('main', 'main')
 	main.id = 'main-content'
 	main.dataset.taskbookNavigationScope = ''
-	main.append(currentView === 'day' ? renderDay() : renderFuture())
-	root.append(main, renderFooter())
+	main.append(currentView === 'day' ? renderDay() : currentView === 'future' ? renderFuture() : renderOverdue(overdue))
+	root.append(main)
+}
+
+function renderSyncError(): HTMLElement | null {
+	if (account?.authState === 'expired') {
+		const error = element('section', 'pwa-status pwa-status-error', s('reconnectionRequired', 'Reconnection required.'))
+		error.setAttribute('role', 'alert')
+		error.append(button(s('reconnect', 'Reconnect'), () => void connect()))
+		return error
+	}
+	if (coordinatorState.sync !== 'failed') { return null }
+	const message = coordinatorState.connection === 'offline'
+		? s('serverUnavailable', 'Server unavailable.')
+		: coordinatorState.connection === 'expired'
+			? s('reconnectionRequired', 'Reconnection required.')
+			: coordinatorState.message.startsWith('Connected, but the initial')
+				? s('initialSyncFailed', 'Initial synchronization failed.')
+				: s('syncFailed', 'Synchronization failed. Changes remain on this device.')
+	const error = element('section', 'pwa-status pwa-status-error', message)
+	error.setAttribute('role', 'alert')
+	return error
 }
 
 function renderHeader(): HTMLElement {
@@ -143,12 +160,22 @@ function renderHeader(): HTMLElement {
 	icon.src = bootstrap.iconUrl
 	icon.alt = ''
 	brand.append(icon, element('span', 'title', s('taskbook', 'Taskbook')))
-	const connection = element('span', `connection connection-${coordinatorState.connection}`)
-	connection.setAttribute('role', 'status')
-	connection.append(element('span', 'connection-dot'))
-	const text = coordinatorState.connection === 'connected' ? s('connected', 'Connected') : coordinatorState.connection === 'expired' ? s('connectionExpired', 'Connection expired') : coordinatorState.connection === 'server-error' ? s('serverError', 'Server error') : s('offline', 'Offline')
-	connection.append(element('span', 'connection-text', text))
-	header.append(brand, connection)
+	const syncCluster = element('div', 'sync-cluster')
+	if (account !== null) {
+		const syncPresentation = syncControlPresentation()
+		const synchronization = button('', () => void coordinator.syncNow(), `sync-button sync-button-${syncPresentation.state}`)
+		synchronization.append(element('span', `sync-icon sync-icon-${syncPresentation.state}`, syncPresentation.glyph))
+		const synchronizationLabel = syncPresentation.label
+		if (coordinatorState.pending > 0) {
+			synchronization.append(element('span', 'sync-count', ` (${coordinatorState.pending})`))
+			synchronization.setAttribute('aria-label', `${synchronizationLabel}, ${coordinatorState.pending} ${coordinatorState.pending === 1 ? s('pendingChange', 'pending change') : s('pendingChanges', 'pending changes')}`)
+		} else {
+			synchronization.setAttribute('aria-label', synchronizationLabel)
+		}
+		synchronization.title = synchronizationLabel
+		syncCluster.append(synchronization)
+	}
+	header.append(brand, syncCluster)
 	if (account !== null) {
 		const actions = element('div', 'header-actions')
 		actions.append(button('+', () => openEntryForm(), 'add-button'), button('⋮', () => openDeviceMenu(), 'icon-button'))
@@ -157,6 +184,22 @@ function renderHeader(): HTMLElement {
 		header.append(actions)
 	}
 	return header
+}
+
+function syncControlPresentation(): { glyph: string, label: string, state: 'idle' | 'syncing' | 'offline' | 'auth' | 'error' } {
+	if (account?.authState === 'expired' || coordinatorState.connection === 'expired') {
+		return { glyph: '↺', label: s('reconnectionRequired', 'Reconnection required'), state: 'auth' }
+	}
+	if (coordinatorState.connection === 'offline') {
+		return { glyph: '⊘', label: s('offline', 'Offline'), state: 'offline' }
+	}
+	if (coordinatorState.sync === 'failed' || coordinatorState.connection === 'server-error') {
+		return { glyph: '!', label: s('synchronizationError', 'Synchronization error'), state: 'error' }
+	}
+	if (coordinatorState.sync === 'syncing') {
+		return { glyph: '⟳', label: s('synchronizing', 'Synchronizing'), state: 'syncing' }
+	}
+	return { glyph: '⟳', label: s('synchronization', 'Synchronization'), state: 'idle' }
 }
 
 function renderSetup(): HTMLElement {
@@ -199,7 +242,10 @@ async function connect(): Promise<void> {
 		const previous = account ?? undefined
 		const login = await startLogin(bootstrap, { signal: controller.signal, onDiagnosticEvent: reportAuth })
 		if (!isCurrent()) { return }
-		const popup = window.open(login.login, '_blank', 'noopener,noreferrer')
+		const popup = window.open(login.login, '_blank')
+		if (popup !== null) {
+			popup.opener = null
+		}
 		reportAuth('auth.login-window.opened', { popupBlocked: popup === null })
 		if (popup === null) {
 			const dialog = element('dialog')
@@ -229,10 +275,10 @@ async function connect(): Promise<void> {
 		account = provisionedAccount
 		setupState = 'authenticated'
 		reportAuth('auth.api-client.ready')
-		activeLoginAttempt = null
-		coordinator.authenticationSucceeded()
-		reportAuth('auth.connected')
 		closeDialog()
+		coordinator.authenticationSucceeded()
+		activeLoginAttempt = null
+		reportAuth('auth.connected')
 		render()
 		try {
 			await coordinator.syncNow()
@@ -257,15 +303,29 @@ async function connect(): Promise<void> {
 	}
 }
 
-function renderNavigation(): HTMLElement {
+function renderNavigation(overdueCount: number): HTMLElement {
 	const nav = element('nav', 'navigation')
 	nav.setAttribute('aria-label', s('views', 'Taskbook views'))
-	for (const [view, label] of [['day', s('day', 'Day')], ['future', s('futureLog', 'Future Log')]] as const) {
+	for (const [view, label] of [['day', s('day', 'Day')], ['future', s('futureLog', 'Future Log')], ['overdue', `${s('overdue', 'Overdue')} (${overdueCount})`]] as const) {
 		const item = button(label, () => { currentView = view; render() }, currentView === view ? 'active' : '')
 		item.setAttribute('aria-current', currentView === view ? 'page' : 'false')
 		nav.append(item)
 	}
 	return nav
+}
+
+function renderOverdue(overdue: SyncEntry[]): HTMLElement {
+	const section = element('section', 'view')
+	section.append(element('h1', undefined, s('overdue', 'Overdue')))
+	if (overdue.length === 0) {
+		section.append(element('p', 'empty', s('noOverdueEntries', 'No overdue entries.')))
+		return section
+	}
+	const list = element('div', 'entry-list')
+	list.dataset.taskbookEntryList = ''
+	overdue.forEach((entry, index) => list.append(renderEntry(entry, entry.type === 'migrated_task' ? 'current' : undefined, index === 0)))
+	section.append(list)
+	return section
 }
 
 function renderDay(): HTMLElement {
@@ -347,7 +407,7 @@ function handleEntryNavigation(event: KeyboardEvent): boolean {
 }
 
 function renderEntry(entry: SyncEntry, migration?: 'original' | 'current', first = false): HTMLElement {
-	const row = element('article', `entry-row${entry.status === 'completed' ? ' completed' : ''}`)
+	const row = element('article', `entry-row${entry.status === 'completed' ? ' completed' : ''}${activeEntryId === entry.clientUid ? ' active' : ''}`)
 	row.tabIndex = first ? 0 : -1
 	row.dataset.taskbookEntryRow = ''
 	row.setAttribute('aria-label', `${entry.status === 'completed' ? s('completedEntry', 'Completed entry') : s('entry', 'Entry')}: ${entry.text}`)
@@ -369,6 +429,12 @@ function renderEntry(entry: SyncEntry, migration?: 'original' | 'current', first
 	row.append(actions)
 	row.addEventListener('focus', () => {
 		for (const other of document.querySelectorAll<HTMLElement>('[data-taskbook-entry-row]')) { other.tabIndex = other === row ? 0 : -1 }
+	})
+	row.addEventListener('click', (event) => {
+		if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches && !(event.target as HTMLElement).closest('button')) {
+			activeEntryId = entry.clientUid
+			render()
+		}
 	})
 	row.addEventListener('keydown', (event) => {
 		if (handleEntryNavigation(event) || !itemShortcutsAllowed(event)) { return }
@@ -508,18 +574,6 @@ async function useServer(conflict: SyncConflict): Promise<void> {
 	await coordinator.refreshPending()
 }
 
-function renderFooter(): HTMLElement {
-	const footer = element('footer', 'footer')
-	const pending = element('span', 'pending', `${coordinatorState.pending} ${s('pending', 'pending')}`)
-	pending.setAttribute('aria-label', `${coordinatorState.pending} ${s('pendingChanges', 'pending changes')}`)
-	footer.append(button(coordinatorState.sync === 'failed' ? s('retrySync', 'Retry sync') : s('syncNow', 'Sync now'), () => void coordinator.syncNow()), pending)
-	if (coordinatorState.sync === 'failed') {
-		footer.prepend(button(s('exportDiagnostics', 'Export diagnostics'), () => void exportDiagnostics()))
-	}
-	if (installPrompt !== null) { footer.prepend(button(s('install', 'Install'), () => void promptInstall(), 'primary')) } else if (!window.matchMedia('(display-mode: standalone)').matches) { footer.prepend(element('span', 'install-help', installInstructions())) }
-	return footer
-}
-
 function installInstructions(): string {
 	return /iphone|ipad|ipod/i.test(navigator.userAgent) ? s('iosInstall', 'To install, use Share, then Add to Home Screen.') : s('browserInstall', 'Install from your browser menu for standalone use.')
 }
@@ -533,14 +587,21 @@ async function promptInstall(): Promise<void> {
 }
 
 function openDeviceMenu(): void {
-	const dialog = element('dialog')
-	dialog.append(
-		element('h2', undefined, s('deviceActions', 'Device actions')),
+	const dialog = element('dialog', 'device-dialog')
+	const actions = element('div', 'device-actions')
+	if (installPrompt !== null) {
+		actions.append(button(s('install', 'Install'), () => { dialog.close(); void promptInstall() }, 'primary'))
+	} else if (!window.matchMedia('(display-mode: standalone)').matches) {
+		dialog.append(element('p', 'install-help', installInstructions()))
+	}
+	actions.append(
 		button(s('exportDiagnostics', 'Export diagnostics'), () => { dialog.close(); void exportDiagnostics() }),
 		button(s('clearDiagnostics', 'Clear diagnostics'), () => { dialog.close(); confirmClearDiagnostics() }),
 		button(s('disconnect', 'Disconnect this device'), () => { dialog.close(); confirmDisconnect() }, 'danger'),
 		button(s('cancel', 'Cancel'), () => dialog.close()),
 	)
+	dialog.prepend(element('h2', undefined, s('deviceActions', 'Device actions')))
+	dialog.append(actions)
 	showDialog(dialog)
 }
 
@@ -671,6 +732,8 @@ window.addEventListener('online', () => void coordinator.syncNow())
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { void coordinator.syncNow() } })
 document.addEventListener('keydown', (event) => {
 	if (isQuickAddShortcut(event)) { event.preventDefault(); openEntryForm(); return }
+	const view = pwaViewShortcut(event)
+	if (view !== undefined) { event.preventDefault(); currentView = view; render(); return }
 	const action = periodNavigationAction(event)
 	if (currentView === 'day' && action !== undefined) {
 		event.preventDefault()

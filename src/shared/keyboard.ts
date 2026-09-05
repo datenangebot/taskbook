@@ -3,6 +3,7 @@ type ClosestTarget = EventTarget & { closest?: (selector: string) => Element | n
 
 export type PeriodNavigationAction = 'previous' | 'next' | 'current'
 export type ItemRowAction = 'edit' | 'toggle' | 'delete' | 'leave'
+export type PwaView = 'day' | 'future'
 
 const editableSelector = 'input, textarea, select, [contenteditable="true"], [role="textbox"]'
 
@@ -19,6 +20,12 @@ export function isQuickAddShortcut(event: ShortcutEvent): boolean {
 		&& !event.metaKey
 		&& event.key.toLowerCase() === 'n'
 		&& !isEditableTarget(event.target)
+}
+
+export function pwaViewShortcut(event: ShortcutEvent): PwaView | undefined {
+	if (event.isComposing || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || isEditableTarget(event.target)) { return undefined }
+	if (event.key.toLowerCase() === 'd') { return 'day' }
+	return event.key.toLowerCase() === 'f' ? 'future' : undefined
 }
 
 export function periodNavigationAction(event: ShortcutEvent): PeriodNavigationAction | undefined {

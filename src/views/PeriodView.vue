@@ -11,7 +11,7 @@ import MonthCalendar from '../components/MonthCalendar.vue'
 import PeriodPageHeader from '../components/PeriodPageHeader.vue'
 import { deleteEntry, getDay, getMonth, getWeek } from '../api.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
-import { contextsFrom, entryChangeKey, openCaptureKey, settingsKey } from '../state.ts'
+import { contextsFrom, entryChangeKey, openCaptureKey, recordEntryChangeKey, settingsKey } from '../state.ts'
 import { addDays, addMonths, displayDate, displayMonth, displayWeek, isoWeekKey, localDateKey, monthStart, weekFromKey, weekStart } from '../utils/dates.ts'
 import { sortEntriesForDisplay } from '../utils/entryMutations.ts'
 import { dayEntryGroups, monthCalendar, monthEntries, weekDayEntries, weekEntryGroups } from '../utils/periodLayout.ts'
@@ -21,6 +21,7 @@ const props = defineProps<{ mode: 'day' | 'week' | 'month', value: string }>()
 const router = useRouter()
 const settings = inject(settingsKey)
 const entryChange = inject(entryChangeKey)
+const recordEntryChange = inject(recordEntryChangeKey)
 const openCapture = inject(openCaptureKey)
 const contexts = computed(() => contextsFrom(settings?.value ?? null))
 const entries = ref<Entry[]>([])
@@ -73,6 +74,7 @@ async function remove(id: number) {
 	try {
 		await deleteEntry(id)
 		entries.value = entries.value.filter((entry) => entry.id !== id)
+		recordEntryChange?.({ deletedId: id })
 		notifySuccess(t('taskbook', 'Entry deleted.'))
 	} catch {
 		notifyError(t('taskbook', 'Entry could not be deleted.'))

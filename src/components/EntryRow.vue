@@ -2,7 +2,7 @@
 import type { Context, Entry, EntryRequest, EntryType, ReferenceType } from '../types.ts'
 
 import { t } from '@nextcloud/l10n'
-import { nextTick, ref } from 'vue'
+import { inject, nextTick, ref } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -15,6 +15,7 @@ import TaskbookModal from './TaskbookModal.vue'
 import { updateEntry } from '../api.ts'
 import { entrySymbols, iconPaths } from '../icons.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
+import { recordEntryChangeKey } from '../state.ts'
 import { dateForReference, localDateKey } from '../utils/dates.ts'
 import { entryRequestFrom } from '../utils/entryMutations.ts'
 import { activateItemRow, handleItemListNavigation, itemRowAction, itemShortcutsAllowed } from '../utils/itemListKeyboard.ts'
@@ -22,6 +23,7 @@ import { parseRapidCapture } from '../utils/rapidCapture.ts'
 
 const props = defineProps<{ entry: Entry, contexts: Context[], compact?: boolean, periodLabel?: string, migrationDisplay?: 'original' | 'current', listFirst?: boolean }>()
 const emit = defineEmits<{ updated: [entry: Entry], deleted: [id: number] }>()
+const recordEntryChange = inject(recordEntryChangeKey)
 
 const editing = ref(false)
 const busy = ref(false)
@@ -66,6 +68,7 @@ async function save() {
 	try {
 		const entry = await updateEntry(props.entry.id, { ...draft.value, text: draft.value.text.trim() })
 		emit('updated', entry)
+		recordEntryChange?.({ entry })
 		editing.value = false
 		notifySuccess(t('taskbook', 'Entry updated.'))
 	} catch {
@@ -84,6 +87,7 @@ async function toggleComplete() {
 		const status = props.entry.status === 'open' ? 'completed' : 'open'
 		const entry = await updateEntry(props.entry.id, entryRequestFrom(props.entry, status))
 		emit('updated', entry)
+		recordEntryChange?.({ entry })
 		notifySuccess(status === 'completed' ? t('taskbook', 'Entry completed.') : t('taskbook', 'Entry reopened.'))
 	} catch {
 		notifyError(t('taskbook', 'Entry could not be updated.'))
