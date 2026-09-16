@@ -2,25 +2,30 @@
 import type { Overview } from '../types.ts'
 
 import { n, t } from '@nextcloud/l10n'
-import { computed, inject, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import ContextFilter from '../components/ContextFilter.vue'
 import EntrySection from '../components/EntrySection.vue'
 import StatsCard from '../components/StatsCard.vue'
 import { deleteEntry } from '../api.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
-import { contextsFrom, overviewKey, overviewLoadingKey, recordEntryChangeKey, settingsKey } from '../state.ts'
+import { contextFilterKey, contextsFrom, overviewKey, overviewLoadingKey, overviewReloadKey, recordEntryChangeKey, settingsKey, viewRefreshRegistryKey } from '../state.ts'
 import { isoWeekKey, localDateKey } from '../utils/dates.ts'
-import { overdueNoticeCount, overviewQuickLinks, overviewStatisticCards } from '../utils/overviewPresentation.ts'
+import { overdueNoticeCount, overviewForContexts, overviewQuickLinks, overviewStatisticCards } from '../utils/overviewPresentation.ts'
 
 const router = useRouter()
 const data = inject(overviewKey) ?? ref<Overview | null>(null)
 const loading = inject(overviewLoadingKey) ?? ref(true)
 const settings = inject(settingsKey)
 const recordEntryChange = inject(recordEntryChangeKey)
+const selectedContextIds = inject(contextFilterKey) ?? ref<number[]>([])
+const reloadOverview = inject(overviewReloadKey)
+const viewRefreshRegistry = inject(viewRefreshRegistryKey)
 const contexts = computed(() => contextsFrom(settings?.value ?? null))
+const filteredData = computed(() => overviewForContexts(data.value, selectedContextIds.value))
 const statisticLabels = {
 	openItems: t('taskbook', 'Open items'),
 	totalItemsCompleted: t('taskbook', 'Total completed'),
@@ -28,8 +33,8 @@ const statisticLabels = {
 	laterItems: t('taskbook', 'Later items'),
 	migratedItems: t('taskbook', 'Migrated items'),
 }
-const statisticCards = computed(() => overviewStatisticCards(data.value, statisticLabels))
-const overdueCount = computed(() => overdueNoticeCount(data.value))
+const statisticCards = computed(() => overviewStatisticCards(filteredData.value, statisticLabels))
+const overdueCount = computed(() => overdueNoticeCount(filteredData.value))
 const overdueNotice = computed(() => overdueCount.value === null
 	? null
 	: n(
@@ -67,18 +72,24 @@ async function remove(id: number) {
 	}
 }
 
+const unregisterRefresh = viewRefreshRegistry?.register('overview', () => { reloadOverview?.() }) ?? (() => {})
+onBeforeUnmount(() => { unregisterRefresh() })
+
 </script>
 
 <template>
 	<div class="taskbook-page">
 		<header class="taskbook-page-header">
-			<h1 class="taskbook-page-heading">
-				{{ t('taskbook', 'Overview') }}
-			</h1>
+			<div class="taskbook-page-heading-actions">
+				<h1 class="taskbook-page-heading">
+					{{ t('taskbook', 'Overview') }}
+				</h1>
+				<ContextFilter />
+			</div>
 		</header>
 		<NcNoteCard v-if="overdueNotice !== null" type="info" :text="overdueNotice" />
 		<NcLoadingIcon v-if="loading" :name="t('taskbook', 'Loading overview')" :size="32" />
-		<template v-else-if="data !== null">
+		<template v-else-if="filteredData !== null">
 			<section class="taskbook-entry-section" :class="$style.quickLinks">
 				<h2>{{ t('taskbook', 'Quick links') }}</h2>
 				<nav :class="$style.periodLinks" :aria-label="t('taskbook', 'Current period views')">
@@ -100,7 +111,7 @@ async function remove(id: number) {
 			</section>
 			<EntrySection :class="$style.overdue"
 				:contexts="contexts"
-				:section="{ id: 'overdue', kind: 'Overdue', entries: data.overdue }"
+				:section="{ id: 'overdue', kind: 'Overdue', entries: filteredData.overdue }"
 				:title="t('taskbook', 'Overdue')"
 				show-target-period
 				@deleted="remove" />

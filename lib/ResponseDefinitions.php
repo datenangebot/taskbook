@@ -38,7 +38,7 @@ namespace OCA\Taskbook;
  *   defaultContextId: int, acknowledgedOperationIds: list<string>, conflicts: list<TaskbookSyncConflict>,
  *   nextCursor: int, hasMore: bool, serverTime: string, timezone: string, locale: string
  * }
- * @psalm-type TaskbookOverview = array{overdue: list<TaskbookEntry>, statistics: array{openItems: int, totalItemsCompleted: int, overdueItems: int, laterItems: int, migratedItems: int}}
+ * @psalm-type TaskbookOverview = array{entries: list<TaskbookEntry>, overdue: list<TaskbookEntry>, statistics: array{openItems: int, totalItemsCompleted: int, overdueItems: int, laterItems: int, migratedItems: int}}
  * @psalm-suppress UnusedClass Types are imported into the documented public controllers.
  */
 final class ResponseDefinitions {

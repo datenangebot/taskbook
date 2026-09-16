@@ -3,9 +3,9 @@ import type { CoordinatorState } from './sync/coordinator.ts'
 import type { PwaBootstrap, SyncConflict, SyncEntry } from './types.ts'
 
 import { addDays, dateForReference, dateKey, displayDate, displayMonth, monthStart } from '../shared/dates.ts'
-import { overdueEntries } from '../shared/entryDomain.ts'
+import { futureLogEntries, overdueEntries } from '../shared/entryDomain.ts'
 import { dayEntryGroups } from '../shared/entryGrouping.ts'
-import { isQuickAddShortcut, itemNavigationIndex, itemRowAction, itemShortcutsAllowed, periodNavigationAction, pwaViewShortcut } from '../shared/keyboard.ts'
+import { isQuickAddShortcut, itemNavigationIndex, itemRowAction, itemShortcutsAllowed, periodNavigationAction, pwaRefreshShortcut, pwaViewShortcut } from '../shared/keyboard.ts'
 import { parseRapidCapture } from '../shared/rapidLogging.ts'
 import { LoginFlowError, pollLogin, startLogin } from './api/loginFlow.ts'
 import { revokeAppPassword } from './api/transport.ts'
@@ -163,7 +163,7 @@ function renderHeader(): HTMLElement {
 	const syncCluster = element('div', 'sync-cluster')
 	if (account !== null) {
 		const syncPresentation = syncControlPresentation()
-		const synchronization = button('', () => void coordinator.syncNow(), `sync-button sync-button-${syncPresentation.state}`)
+		const synchronization = button('', refreshData, `sync-button sync-button-${syncPresentation.state}`)
 		synchronization.append(element('span', `sync-icon sync-icon-${syncPresentation.state}`, syncPresentation.glyph))
 		const synchronizationLabel = syncPresentation.label
 		if (coordinatorState.pending > 0) {
@@ -356,16 +356,16 @@ function navigateDay(amount: number): void {
 }
 
 function futureSections(): Array<{ id: string, label: string, entries: SyncEntry[] }> {
-	const currentMonth = monthStart(today())
-	const later = entries.filter((entry) => entry.referenceType === 'none')
+	const eligible = futureLogEntries(entries, today())
+	const later = eligible.filter((entry) => entry.referenceType === 'none')
 	const months = new Map<string, SyncEntry[]>()
-	for (const entry of entries) {
-		if (entry.effectiveTargetDate !== null && monthStart(entry.effectiveTargetDate) > currentMonth) {
+	for (const entry of eligible) {
+		if (entry.effectiveTargetDate !== null) {
 			const key = monthStart(entry.effectiveTargetDate)
 			months.set(key, [...months.get(key) ?? [], entry])
 		}
 	}
-	const sort = (items: SyncEntry[]) => items.sort((left, right) => Number(left.status === 'completed') - Number(right.status === 'completed') || left.createdAt.localeCompare(right.createdAt) || left.id - right.id)
+	const sort = (items: SyncEntry[]) => items.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id - right.id)
 	return [{ id: 'later', label: s('later', 'Later / No date'), entries: sort(later) }, ...[...months].sort(([left], [right]) => left.localeCompare(right)).map(([key, items]) => ({ id: key, label: displayMonth(key, account?.locale), entries: sort(items) }))]
 }
 
@@ -727,11 +727,16 @@ function activateUpdate(): void {
 	waiting.postMessage('SKIP_WAITING')
 }
 
+function refreshData(): void {
+	void coordinator.syncNow()
+}
+
 window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event as InstallPrompt; render() })
 window.addEventListener('online', () => void coordinator.syncNow())
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { void coordinator.syncNow() } })
 document.addEventListener('keydown', (event) => {
 	if (isQuickAddShortcut(event)) { event.preventDefault(); openEntryForm(); return }
+	if (pwaRefreshShortcut(event)) { event.preventDefault(); refreshData(); return }
 	const view = pwaViewShortcut(event)
 	if (view !== undefined) { event.preventDefault(); currentView = view; render(); return }
 	const action = periodNavigationAction(event)

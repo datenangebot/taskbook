@@ -1,7 +1,7 @@
 import type { Context, EntryRequest } from './types.ts'
 
 import { describe, expect, it } from 'vitest'
-import { applyEntryRequest, createLocalEntry, isOverdueEntry, overdueEntries, syncPayload } from './entryDomain.ts'
+import { applyEntryRequest, createLocalEntry, futureLogEntries, isOverdueEntry, overdueEntries, syncPayload } from './entryDomain.ts'
 
 const context: Context = { id: 1, title: 'General', icon: '🗂️', alias: 'g', revision: 1, createdAt: '', updatedAt: '' }
 const request: EntryRequest = { text: 'Plan', type: 'task', important: false, contextId: 1, referenceType: 'day', targetDate: '2026-09-01', status: 'open' }
@@ -46,6 +46,15 @@ describe('shared offline Entry domain', () => {
 		const overdue = overdueEntries([first, current, second], '2026-09-01')
 		expect(overdue).toHaveLength(2)
 		expect(overdue.map((entry) => entry.clientUid)).toEqual([second.clientUid, first.clientUid])
+	})
+
+	it('derives an open-only Future Log from canonical local entries', () => {
+		const later = createLocalEntry('00000000-0000-4000-8000-000000000001', { ...request, referenceType: 'none', targetDate: null }, [context], '2026-09-01T08:00:00Z')
+		const future = createLocalEntry('00000000-0000-4000-8000-000000000002', { ...request, targetDate: '2026-10-01' }, [context], '2026-09-01T08:00:00Z')
+		const completedLater = applyEntryRequest(later, { ...syncPayload(later), status: 'completed' }, [context], '2026-09-01T09:00:00Z')
+		const completedFuture = applyEntryRequest(future, { ...syncPayload(future), status: 'completed' }, [context], '2026-09-01T09:00:00Z')
+		expect(futureLogEntries([later, future, completedLater, completedFuture], '2026-09-15').map((entry) => entry.clientUid)).toEqual([later.clientUid, future.clientUid])
+		expect(futureLogEntries([completedFuture], '2026-09-15')).toEqual([])
 	})
 
 	it('reacts immediately when an overdue entry is completed, reopened, or moved', () => {

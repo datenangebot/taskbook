@@ -111,6 +111,27 @@ final class ViewServiceTest extends TestCase {
 		$this->assertSame([6], array_column($response['sections'][0]['entries'], 'id'));
 	}
 
+	public function testFutureReadModelContainsOnlyOpenLaterAndFutureMonthEntries(): void {
+		$openLater = $this->entry(1, 'day', '2026-08-30');
+		$openLater->setReferenceType('none');
+		$openLater->setPrimaryTargetDate(null);
+		$completedLater = clone $openLater;
+		$completedLater->setId(2);
+		$completedLater->setStatus('completed');
+		$completedLater->setCompletedAt($this->timestamp());
+		$openFuture = $this->entry(3, 'month', '2026-09-01');
+		$completedFuture = clone $openFuture;
+		$completedFuture->setId(4);
+		$completedFuture->setStatus('completed');
+		$completedFuture->setCompletedAt($this->timestamp());
+		$this->entryMapper->method('findAllForUser')->willReturn([$openLater, $completedLater, $openFuture, $completedFuture]);
+
+		$response = $this->service()->future('alice');
+
+		$this->assertSame([1], array_column($response['sections'][0]['entries'], 'id'));
+		$this->assertSame([3], array_column($response['sections'][1]['entries'], 'id'));
+	}
+
 	public function testMigratedEntryIsAvailableAtOriginalAndCurrentPeriodsWithoutPersistenceDuplication(): void {
 		$migrated = $this->entry(8, 'day', '2026-08-24', '2026-08-31');
 		$this->entryMapper->method('findAllForUser')->willReturn([$migrated]);
@@ -138,6 +159,7 @@ final class ViewServiceTest extends TestCase {
 
 		$response = $this->service()->overview('alice');
 
+		$this->assertSame([1, 3, 4, 5, 6, 2], array_column($response['entries'], 'id'));
 		$this->assertSame([3, 6], array_column($response['overdue'], 'id'));
 		$this->assertSame([
 			'openItems' => 5,

@@ -54,6 +54,7 @@ export interface PeriodEntriesResponse {
 }
 
 export interface Overview {
+	entries: Entry[]
 	overdue: Entry[]
 	statistics: {
 		openItems: number

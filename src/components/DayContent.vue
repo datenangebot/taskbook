@@ -7,7 +7,7 @@ import CompactEntryGroups from './CompactEntryGroups.vue'
 import EntryRow from './EntryRow.vue'
 import { displayDate, displayMonth, isoWeekParts } from '../utils/dates.ts'
 
-defineProps<{ date: string, direct: EntryOccurrence[], inherited: EntryOccurrence[], contexts: Context[], heading?: boolean, headingLink?: boolean, boxed?: boolean, compact?: boolean }>()
+defineProps<{ date: string, direct: EntryOccurrence[], inherited: EntryOccurrence[], contexts: Context[], heading?: boolean, headingLink?: boolean, boxed?: boolean, compact?: boolean, today?: boolean }>()
 const emit = defineEmits<{ updated: [entry: Entry], deleted: [id: number] }>()
 
 function periodLabel(entry: Entry): string | undefined {
@@ -23,7 +23,10 @@ function periodLabel(entry: Entry): string | undefined {
 </script>
 
 <template>
-	<section :class="[$style.day, { 'taskbook-lightweight-container': boxed }]" data-taskbook-entry-list>
+	<section :aria-current="today ? 'date' : undefined"
+		:aria-label="today ? t('taskbook', 'Today: {date}', { date: displayDate(date) }) : undefined"
+		:class="[$style.day, { 'taskbook-lightweight-container': boxed, [$style.today]: today }]"
+		data-taskbook-entry-list>
 		<h2 v-if="heading" :class="$style.heading">
 			<RouterLink v-if="headingLink"
 				:class="$style.headingLink"
@@ -76,6 +79,8 @@ function periodLabel(entry: Entry): string | undefined {
 .day:first-child .heading { margin-top: 0; }
 
 .day:global(.taskbook-lightweight-container) .heading { margin-top: 0; }
+
+.today:global(.taskbook-lightweight-container) { background: var(--color-primary-element-light); }
 
 .headingLink { border-radius: var(--border-radius-small); color: var(--color-main-text); text-decoration: none; }
 

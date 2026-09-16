@@ -1,9 +1,9 @@
 import type { Overview } from '../types.ts'
 
 import { describe, expect, it } from 'vitest'
-import { overdueNavigationCount, overdueNoticeCount, overviewQuickLinks, overviewStatisticCards } from './overviewPresentation.ts'
+import { overdueNavigationCount, overdueNoticeCount, overviewForContexts, overviewQuickLinks, overviewStatisticCards } from './overviewPresentation.ts'
 
-const overview = (overdueItems: number): Overview => ({ overdue: [], statistics: { openItems: 0, totalItemsCompleted: 0, overdueItems, laterItems: 0, migratedItems: 0 } })
+const overview = (overdueItems: number): Overview => ({ entries: [], overdue: [], statistics: { openItems: 0, totalItemsCompleted: 0, overdueItems, laterItems: 0, migratedItems: 0 } })
 
 describe('Overview navigation counter', () => {
 	it('is absent for a zero count', () => expect(overdueNavigationCount(overview(0))).toBeNull())
@@ -16,6 +16,21 @@ describe('Overview navigation counter', () => {
 })
 
 describe('Overview presentation', () => {
+	it('derives the displayed statistics and overdue list from selected contexts only', () => {
+		const data = overview(0)
+		data.entries = [
+			{ id: 1, contextId: 1, status: 'open', referenceType: 'day', secondaryTargetDate: null },
+			{ id: 2, contextId: 2, status: 'completed', referenceType: 'none', secondaryTargetDate: '2026-09-01' },
+		] as Overview['entries']
+		data.overdue = data.entries
+		data.statistics.overdueItems = 2
+		const filtered = overviewForContexts(data, [2])
+
+		expect(filtered?.statistics).toMatchObject({ openItems: 0, totalItemsCompleted: 1, overdueItems: 1, laterItems: 1, migratedItems: 1 })
+		expect(filtered?.overdue).toMatchObject([{ id: 2 }])
+		expect(overdueNavigationCount(data)).toBe(2)
+	})
+
 	it('uses the shortened Total completed label without changing its metric', () => {
 		const data = overview(0)
 		data.statistics.totalItemsCompleted = 12

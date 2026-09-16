@@ -406,6 +406,7 @@ watch(() => settings?.value, (value) => {
 				<div><dt><kbd>Shift</kbd> + <kbd>M</kbd></dt><dd>{{ t('taskbook', 'Month') }}</dd></div>
 				<div><dt><kbd>Shift</kbd> + <kbd>F</kbd></dt><dd>{{ t('taskbook', 'Future Log') }}</dd></div>
 				<div><dt><kbd>Shift</kbd> + <kbd>N</kbd></dt><dd>{{ t('taskbook', 'New entry') }}</dd></div>
+				<div><dt><kbd>Shift</kbd> + <kbd>R</kbd></dt><dd>{{ t('taskbook', 'Refresh data') }}</dd></div>
 			</dl>
 			<p :class="$style.shortcutHeading">
 				{{ t('taskbook', 'Period navigation') }}

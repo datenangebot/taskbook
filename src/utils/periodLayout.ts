@@ -14,6 +14,7 @@ export interface WeekEntryGroups {
 
 export interface WeekDayEntries extends DayEntryGroups {
 	date: string
+	isToday: boolean
 }
 
 export interface CalendarDay extends DayEntryGroups {
@@ -47,11 +48,12 @@ export function entryOccurrenceSummary(occurrences: EntryOccurrence[]): EntryGro
 	}, { open: 0, closed: 0 })
 }
 
-export function weekDayEntries(start: string, entries: Entry[]): WeekDayEntries[] {
+export function weekDayEntries(start: string, entries: Entry[], today = localDateKey()): WeekDayEntries[] {
 	return Array.from({ length: 7 }, (_, offset) => {
 		const date = addDays(start, offset)
 		return {
 			date,
+			isToday: date === today,
 			direct: sortOccurrences(entriesFor(entries, 'day', date)).map((occurrence) => ({
 				...occurrence,
 				presentation: occurrence.migrationDisplay === 'original' ? 'migration-original' : occurrence.migrationDisplay === 'current' ? 'migration-target' : 'day-direct',

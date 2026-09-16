@@ -6,33 +6,43 @@ export type ItemRowAction = 'edit' | 'toggle' | 'delete' | 'leave'
 export type PwaView = 'day' | 'future'
 
 const editableSelector = 'input, textarea, select, [contenteditable="true"], [role="textbox"]'
+const interactionOwnerSelector = 'dialog, [role="dialog"], [data-taskbook-editor-active="true"]'
 
 export function isEditableTarget(target: EventTarget | null): boolean {
 	const element = target as ClosestTarget | null
 	return typeof element?.closest === 'function' && element.closest(editableSelector) !== null
 }
 
-export function isQuickAddShortcut(event: ShortcutEvent): boolean {
+function pwaGlobalShortcutAllowed(event: ShortcutEvent): boolean {
+	const element = event.target as ClosestTarget | null
 	return !event.isComposing
 		&& event.shiftKey
 		&& !event.ctrlKey
 		&& !event.altKey
 		&& !event.metaKey
-		&& event.key.toLowerCase() === 'n'
 		&& !isEditableTarget(event.target)
+		&& !(typeof element?.closest === 'function' && element.closest(interactionOwnerSelector) !== null)
+}
+
+export function isQuickAddShortcut(event: ShortcutEvent): boolean {
+	return pwaGlobalShortcutAllowed(event) && event.key.toLowerCase() === 'n'
 }
 
 export function pwaViewShortcut(event: ShortcutEvent): PwaView | undefined {
-	if (event.isComposing || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || isEditableTarget(event.target)) { return undefined }
+	if (!pwaGlobalShortcutAllowed(event)) { return undefined }
 	if (event.key.toLowerCase() === 'd') { return 'day' }
 	return event.key.toLowerCase() === 'f' ? 'future' : undefined
 }
 
 export function periodNavigationAction(event: ShortcutEvent): PeriodNavigationAction | undefined {
-	if (event.isComposing || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || isEditableTarget(event.target)) { return undefined }
+	if (!pwaGlobalShortcutAllowed(event)) { return undefined }
 	if (event.key === 'ArrowLeft') { return 'previous' }
 	if (event.key === 'ArrowRight') { return 'next' }
 	return event.key === 'ArrowDown' ? 'current' : undefined
+}
+
+export function pwaRefreshShortcut(event: ShortcutEvent): boolean {
+	return pwaGlobalShortcutAllowed(event) && event.key.toLowerCase() === 'r'
 }
 
 export function itemRowAction(key: string, compact: boolean): ItemRowAction | undefined {

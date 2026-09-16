@@ -11,7 +11,8 @@ import MonthCalendar from '../components/MonthCalendar.vue'
 import PeriodPageHeader from '../components/PeriodPageHeader.vue'
 import { deleteEntry, getDay, getMonth, getWeek } from '../api.ts'
 import { notifyError, notifySuccess } from '../notifications.ts'
-import { contextsFrom, entryChangeKey, openCaptureKey, recordEntryChangeKey, settingsKey } from '../state.ts'
+import { contextFilterKey, contextsFrom, entryChangeKey, openCaptureKey, recordEntryChangeKey, settingsKey, viewRefreshRegistryKey } from '../state.ts'
+import { filterEntriesByContext } from '../utils/contextFilter.ts'
 import { addDays, addMonths, displayDate, displayMonth, displayWeek, isoWeekKey, localDateKey, monthStart, weekFromKey, weekStart } from '../utils/dates.ts'
 import { sortEntriesForDisplay } from '../utils/entryMutations.ts'
 import { dayEntryGroups, monthCalendar, monthEntries, weekDayEntries, weekEntryGroups } from '../utils/periodLayout.ts'
@@ -23,11 +24,15 @@ const settings = inject(settingsKey)
 const entryChange = inject(entryChangeKey)
 const recordEntryChange = inject(recordEntryChangeKey)
 const openCapture = inject(openCaptureKey)
+const selectedContextIds = inject(contextFilterKey) ?? ref<number[]>([])
+const viewRefreshRegistry = inject(viewRefreshRegistryKey)
 const contexts = computed(() => contextsFrom(settings?.value ?? null))
 const entries = ref<Entry[]>([])
+const filteredEntries = computed(() => filterEntriesByContext(entries.value, selectedContextIds.value))
 const loading = ref(true)
 const firstDay = Number(getFirstDay())
 let unregisterPeriodNavigationShortcuts = () => {}
+let unregisterRefresh = () => {}
 
 const anchor = computed(() => props.mode === 'week' ? weekFromKey(props.value) : props.mode === 'month' ? `${props.value.slice(0, 7)}-01` : props.value)
 const title = computed(() => props.mode === 'day' ? t('taskbook', 'Day') : props.mode === 'week' ? t('taskbook', 'Week') : t('taskbook', 'Month'))
@@ -37,12 +42,12 @@ const isCurrentPeriod = computed(() => {
 	const today = localDateKey()
 	return props.mode === 'day' ? anchor.value === today : props.mode === 'week' ? weekStart(anchor.value) === weekStart(today) : monthStart(anchor.value) === monthStart(today)
 })
-const dayGroups = computed(() => dayEntryGroups(anchor.value, entries.value))
-const weekDays = computed(() => weekDayEntries(anchor.value, entries.value))
+const dayGroups = computed(() => dayEntryGroups(anchor.value, filteredEntries.value))
+const weekDays = computed(() => weekDayEntries(anchor.value, filteredEntries.value))
 const weekDayColumns = computed(() => [weekDays.value.slice(0, 4), weekDays.value.slice(4)])
-const weeklyEntries = computed(() => weekEntryGroups(anchor.value, entries.value))
-const calendarRows = computed(() => monthCalendar(anchor.value, entries.value, firstDay))
-const selectedMonthEntries = computed(() => monthEntries(anchor.value, entries.value))
+const weeklyEntries = computed(() => weekEntryGroups(anchor.value, filteredEntries.value))
+const calendarRows = computed(() => monthCalendar(anchor.value, filteredEntries.value, firstDay))
+const selectedMonthEntries = computed(() => monthEntries(anchor.value, filteredEntries.value))
 
 async function load() {
 	loading.value = true
@@ -91,7 +96,14 @@ function current() {
 	void router.push(props.mode === 'day' ? { name: 'day', params: { date: today } } : props.mode === 'week' ? { name: 'week', params: { week: isoWeekKey(today) } } : { name: 'month', params: { month: today.slice(0, 7) } })
 }
 
+function registerRefresh() {
+	unregisterRefresh()
+	unregisterRefresh = viewRefreshRegistry?.register(props.mode, () => { void load() }) ?? (() => {})
+}
+
+registerRefresh()
 watch(() => props.value, load)
+watch(() => props.mode, registerRefresh)
 watch(entryChange ?? ref(null), (change) => { if (change !== null) { void load() } })
 onMounted(() => {
 	void load()
@@ -105,7 +117,10 @@ onMounted(() => {
 		}
 	})
 })
-onBeforeUnmount(() => unregisterPeriodNavigationShortcuts())
+onBeforeUnmount(() => {
+	unregisterPeriodNavigationShortcuts()
+	unregisterRefresh()
+})
 </script>
 
 <template>
@@ -134,6 +149,7 @@ onBeforeUnmount(() => unregisterPeriodNavigationShortcuts())
 					:key="day.date"
 					:contexts="contexts"
 					:date="day.date"
+					:today="day.isToday"
 					:direct="day.direct"
 					:inherited="day.inherited"
 					boxed
