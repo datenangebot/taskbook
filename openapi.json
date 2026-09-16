@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "taskbook",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "description": "Taskbook is a Nextcloud app for managing tasks, plans, and notes in one simple daily workspace.",
         "license": {
             "name": "AGPL-3.0-or-later"

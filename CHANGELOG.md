@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0]
+
+### Added
+
+- Filter the Day, Week, Month, and Future Log views by context.
+- Add the `Shift+R` keyboard shortcut to refresh Taskbook data.
+
+### Changed
+
+- Improve the Nextcloud Dashboard widget integration and its current-entry display.
+
+### Fixed
+
+- Make legacy user preferences type-safe when read from Nextcloud configuration.
+
 ## [1.2.0]
 
 ### Added
