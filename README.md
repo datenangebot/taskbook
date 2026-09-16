@@ -47,6 +47,8 @@ Contexts have:
 
 Contexts can be created and edited in Taskbook settings. Shortcuts are unique per user and can be used during rapid capture.
 
+Use the context filter in Day, Week, Month, and Future Log to focus each view on a single context.
+
 ### Keyboard navigation
 
 Taskbook supports keyboard-first navigation while keeping shortcuts inactive inside text fields, editors, dialogs, and other interactive controls.
@@ -65,6 +67,8 @@ Period and entry lists also support keyboard navigation where appropriate.
 ### Nextcloud Dashboard
 
 Taskbook integrates with the native Nextcloud Dashboard and provides a compact view of current entries with quick access to capture.
+
+Use <kbd>Shift</kbd> + <kbd>R</kbd> to refresh Taskbook data when needed.
 
 ## Progressive Web App
 
