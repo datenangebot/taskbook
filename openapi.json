@@ -225,10 +225,17 @@
             "Overview": {
                 "type": "object",
                 "required": [
+                    "entries",
                     "overdue",
                     "statistics"
                 ],
                 "properties": {
+                    "entries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Entry"
+                        }
+                    },
                     "overdue": {
                         "type": "array",
                         "items": {

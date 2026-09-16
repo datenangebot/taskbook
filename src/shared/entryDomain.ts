@@ -26,6 +26,17 @@ export function overdueEntries<T extends Entry>(entries: T[], today: string): T[
 		.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id - right.id)
 }
 
+/**
+ * Entries eligible for the open-only Future Log read model.
+ *
+ * @param entries Canonical entries.
+ * @param today Current user-local day.
+ */
+export function futureLogEntries<T extends Entry>(entries: T[], today: string): T[] {
+	const currentMonth = monthStart(today)
+	return entries.filter((entry) => entry.status === 'open' && (entry.referenceType === 'none' || (entry.effectiveTargetDate !== null && monthStart(entry.effectiveTargetDate) > currentMonth)))
+}
+
 function sameTarget(entry: SyncEntry, request: EntryRequest): boolean {
 	return entry.referenceType === request.referenceType && entry.effectiveTargetDate === request.targetDate
 }

@@ -4,12 +4,12 @@ import type { EntryOccurrence } from '../utils/periodLayout.ts'
 
 import CompactEntryRow from './CompactEntryRow.vue'
 
-defineProps<{ direct: EntryOccurrence[], inherited: EntryOccurrence[] }>()
+defineProps<{ direct: EntryOccurrence[], inherited: EntryOccurrence[], scrollable?: boolean }>()
 const emit = defineEmits<{ updated: [entry: Entry] }>()
 </script>
 
 <template>
-	<div :class="$style.list" data-taskbook-entry-list>
+	<div :class="[$style.list, { [$style.scrollable]: scrollable }]" data-taskbook-entry-list>
 		<div v-if="direct.length > 0" :class="$style.entries">
 			<CompactEntryRow v-for="(occurrence, index) in direct"
 				:key="`${occurrence.entry.id}-${occurrence.migrationDisplay ?? 'entry'}`"
@@ -34,6 +34,8 @@ const emit = defineEmits<{ updated: [entry: Entry] }>()
 
 <style module>
 .list { min-width: 0; }
+
+.scrollable { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 
 .entries { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 

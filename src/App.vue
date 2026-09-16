@@ -18,12 +18,13 @@ import SupportModal from './components/SupportModal.vue'
 import { getOverview, getSettings } from './api.ts'
 import { iconPaths } from './icons.ts'
 import { notifyError } from './notifications.ts'
-import { entryChangeKey, openCaptureKey, overviewKey, overviewLoadingKey, recordEntryChangeKey, settingsKey } from './state.ts'
+import { contextFilterKey, entryChangeKey, openCaptureKey, overviewKey, overviewLoadingKey, overviewReloadKey, recordEntryChangeKey, settingsKey, viewRefreshRegistryKey } from './state.ts'
 import { isoWeekKey, localDateKey } from './utils/dates.ts'
 import { entryReadModel } from './utils/entryReadModel.ts'
 import { registerImmediateItemNavigation } from './utils/itemListKeyboard.ts'
 import { overdueNavigationCount } from './utils/overviewPresentation.ts'
 import { registerTaskbookShortcuts } from './utils/quickAddShortcut.ts'
+import { createViewRefreshRegistry } from './utils/viewRefreshRegistry.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +34,8 @@ const { data: overview, loading: overviewLoading, reload: loadOverview } = entry
 const settingsOpen = ref(false)
 const captureOpen = ref(false)
 const supportOpen = ref(false)
+const contextFilterIds = ref<number[]>([])
+const viewRefreshRegistry = createViewRefreshRegistry()
 let unregisterTaskbookShortcuts = () => {}
 let unregisterItemNavigation = () => {}
 provide(settingsKey, settings)
@@ -41,6 +44,9 @@ provide(recordEntryChangeKey, recordEntryChange)
 provide(overviewKey, overview)
 provide(overviewLoadingKey, overviewLoading)
 provide(openCaptureKey, () => { captureOpen.value = true })
+provide(contextFilterKey, contextFilterIds)
+provide(viewRefreshRegistryKey, viewRefreshRegistry)
+provide(overviewReloadKey, () => { void loadOverview() })
 
 const active = computed(() => route.name?.toString() ?? 'overview')
 const overdueCount = computed(() => overdueNavigationCount(overview.value))
@@ -61,6 +67,7 @@ onMounted(() => {
 	unregisterTaskbookShortcuts = registerTaskbookShortcuts({
 		onQuickAdd: () => { captureOpen.value = true },
 		onViewNavigation: navigate,
+		onRefresh: () => { viewRefreshRegistry.refresh(active.value) },
 	})
 	unregisterItemNavigation = registerImmediateItemNavigation(() => document.querySelector('[data-taskbook-navigation-scope]'))
 })

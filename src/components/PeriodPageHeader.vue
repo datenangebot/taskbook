@@ -2,6 +2,7 @@
 import { t } from '@nextcloud/l10n'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import ContextFilter from './ContextFilter.vue'
 import { iconPaths } from '../icons.ts'
 
 defineProps<{ title: string, currentLabel: string, current: boolean }>()
@@ -10,9 +11,12 @@ const emit = defineEmits<{ previous: [], current: [], next: [], create: [] }>()
 
 <template>
 	<header class="taskbook-page-header">
-		<h1 class="taskbook-page-heading">
-			{{ title }}
-		</h1>
+		<div class="taskbook-page-heading-actions">
+			<h1 class="taskbook-page-heading">
+				{{ title }}
+			</h1>
+			<ContextFilter />
+		</div>
 		<div class="taskbook-period-navigation">
 			<NcButton :aria-label="t('taskbook', 'Previous period')"
 				:title="t('taskbook', 'Previous period')"

@@ -6,9 +6,20 @@ import './styles/icon.css'
 
 type DashboardRegistration = { register: (widgetId: string, mount: (element: HTMLElement) => void) => void }
 
+export const dashboardMountClass = 'taskbook-dashboard-mount'
+
+export function prepareDashboardMount(element: HTMLElement) {
+	element.classList.add(dashboardMountClass)
+}
+
 function registerDashboardWidget() {
 	const dashboard = (window as Window & { OCA?: { Dashboard?: DashboardRegistration } }).OCA?.Dashboard
-	if (dashboard !== undefined) { dashboard.register('taskbook', (element) => { createApp(DashboardWidget).mount(element) }) }
+	if (dashboard !== undefined) {
+		dashboard.register('taskbook', (element) => {
+			prepareDashboardMount(element)
+			createApp(DashboardWidget).mount(element)
+		})
+	}
 }
 
 document.addEventListener('DOMContentLoaded', registerDashboardWidget)

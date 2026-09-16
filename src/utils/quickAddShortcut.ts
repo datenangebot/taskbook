@@ -12,6 +12,7 @@ export type ViewNavigationAction = 'overview' | 'day' | 'week' | 'month' | 'futu
 interface TaskbookShortcutHandlers {
 	onQuickAdd: () => void
 	onViewNavigation: (action: ViewNavigationAction) => void
+	onRefresh: () => void
 }
 
 const editableSelector = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'
@@ -81,6 +82,10 @@ export function viewNavigationAction(event: ShortcutEvent): ViewNavigationAction
 	return viewNavigationActions[event.key.toLowerCase()]
 }
 
+export function refreshAction(event: ShortcutEvent): boolean {
+	return globalShortcutAllowed(event) && event.key.toLowerCase() === 'r'
+}
+
 export function registerQuickAddShortcut(onQuickAdd: () => void, eventTarget: ShortcutListenerTarget = window, accessibility?: AccessibilitySettings): () => void {
 	if (keyboardShortcutsDisabled(accessibility)) {
 		return () => {}
@@ -97,7 +102,7 @@ export function registerQuickAddShortcut(onQuickAdd: () => void, eventTarget: Sh
 	return () => eventTarget.removeEventListener('keydown', onKeydown)
 }
 
-export function registerTaskbookShortcuts({ onQuickAdd, onViewNavigation }: TaskbookShortcutHandlers, eventTarget: ShortcutListenerTarget = window, accessibility?: AccessibilitySettings): () => void {
+export function registerTaskbookShortcuts({ onQuickAdd, onViewNavigation, onRefresh }: TaskbookShortcutHandlers, eventTarget: ShortcutListenerTarget = window, accessibility?: AccessibilitySettings): () => void {
 	if (keyboardShortcutsDisabled(accessibility)) {
 		return () => {}
 	}
@@ -109,11 +114,15 @@ export function registerTaskbookShortcuts({ onQuickAdd, onViewNavigation }: Task
 			return
 		}
 		const action = viewNavigationAction(event)
-		if (action === undefined) {
+		if (action !== undefined) {
+			event.preventDefault()
+			onViewNavigation(action)
 			return
 		}
-		event.preventDefault()
-		onViewNavigation(action)
+		if (refreshAction(event)) {
+			event.preventDefault()
+			onRefresh()
+		}
 	}
 	eventTarget.addEventListener('keydown', onKeydown)
 	return () => eventTarget.removeEventListener('keydown', onKeydown)

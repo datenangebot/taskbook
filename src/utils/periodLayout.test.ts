@@ -52,11 +52,16 @@ describe('dayEntryGroups', () => {
 
 describe('weekDayEntries', () => {
 	it('builds all seven local days without duplicating broader entries', () => {
-		const days = weekDayEntries('2026-12-28', [entry(1, 'day', '2027-01-01'), entry(2, 'week', '2026-12-28'), entry(3, 'month', '2027-01-01')])
+		const days = weekDayEntries('2026-12-28', [entry(1, 'day', '2027-01-01'), entry(2, 'week', '2026-12-28'), entry(3, 'month', '2027-01-01')], '2027-01-01')
 		expect(days.map(({ date }) => date)).toEqual(['2026-12-28', '2026-12-29', '2026-12-30', '2026-12-31', '2027-01-01', '2027-01-02', '2027-01-03'])
 		expect(ids(days[4].direct)).toEqual([1])
 		expect(days.every(({ inherited }) => inherited.length === 0)).toBe(true)
 		expect(days.flatMap(({ direct }) => ids(direct))).toEqual([1])
+		expect(days.map(({ isToday }) => isToday)).toEqual([false, false, false, false, true, false, false])
+	})
+
+	it('does not mark a day when the displayed week excludes today', () => {
+		expect(weekDayEntries('2026-12-28', [], '2027-01-10').some(({ isToday }) => isToday)).toBe(false)
 	})
 })
 

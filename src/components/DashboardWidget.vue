@@ -64,6 +64,7 @@ onBeforeUnmount(() => { unregisterQuickAddShortcut(); unregisterItemNavigation()
 		</p><CompactEntryGroups v-else
 			:direct="groups.direct"
 			:inherited="groups.inherited"
+			scrollable
 			@updated="upsert" /><RapidCaptureModal :contexts="settings?.contexts ?? []"
 				:default-context-id="settings?.defaultContextId ?? null"
 				:open="captureOpen"
@@ -73,9 +74,11 @@ onBeforeUnmount(() => { unregisterQuickAddShortcut(); unregisterItemNavigation()
 </template>
 
 <style module>
-.widget { display:flex; flex-direction:column; gap:8px; }
+.widget { display:flex; flex:1 1 auto; flex-direction:column; height:100%; max-height:100%; min-height:0; overflow:hidden; gap:8px; }
 
-.controls { display:flex; justify-content:flex-end; }
+.controls { display:flex; flex:0 0 auto; justify-content:flex-end; }
 
 .empty { margin:0; color:var(--color-text-maxcontrast); }
+
+:global(.taskbook-dashboard-mount) { display:flex; height:100%; max-height:100%; min-height:0; overflow:hidden; }
 </style>

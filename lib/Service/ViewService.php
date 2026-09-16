@@ -33,6 +33,7 @@ class ViewService {
 		$entries = $this->entries($uid);
 		$overdue = $this->sort($this->overdueService->filter($entries, $today));
 		return [
+			'entries' => $this->responses($uid, $this->sort($entries)),
 			'overdue' => $this->responses($uid, $overdue),
 			'statistics' => [
 				'openItems' => count($this->filter($entries, fn (Entry $entry): bool => $entry->getStatus() === 'open')),
@@ -107,11 +108,11 @@ class ViewService {
 	public function future(string $uid): array {
 		$entries = $this->entries($uid);
 		$month = $this->periodService->monthStart($this->periodService->today());
-		$sections = [$this->section('later', 'Later / No date', $uid, $this->filter($entries, fn (Entry $entry): bool => $entry->getReferenceType() === 'none'))];
+		$sections = [$this->section('later', 'Later / No date', $uid, $this->filter($entries, fn (Entry $entry): bool => $entry->getStatus() === 'open' && $entry->getReferenceType() === 'none'))];
 		$groups = [];
 		foreach ($entries as $entry) {
 			$target = $this->entryService->effectiveTargetDate($entry);
-			if ($target !== null && $target > $month) {
+			if ($entry->getStatus() === 'open' && $target !== null && $target > $month) {
 				$key = $this->periodService->monthStart($target)->format('Y-m-d');
 				$groups[$key][] = $entry;
 			}
